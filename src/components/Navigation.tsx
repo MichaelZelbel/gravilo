@@ -2,8 +2,22 @@ import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 import graviloLogo from "@/assets/gravilo-logo.webp";
 import { supabase } from "@/integrations/supabase/client";
+import { useEffect, useState } from "react";
+import type { Session } from "@supabase/supabase-js";
 
 const Navigation = () => {
+  const [session, setSession] = useState<Session | null>(null);
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data }) => setSession(data.session));
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session);
+    });
+
+    return () => subscription?.unsubscribe();
+  }, []);
+
   const handleLogin = async () => {
     await supabase.auth.signInWithOAuth({
       provider: "discord",
@@ -12,6 +26,12 @@ const Navigation = () => {
       },
     });
   };
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    window.location.href = "/";
+  };
+
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 px-6 py-4">
       <div className="max-w-7xl mx-auto glass-card glass-glow rounded-3xl px-8 py-4">
@@ -35,10 +55,16 @@ const Navigation = () => {
             </a>
           </div>
 
-          {/* Login Button */}
-          <Button onClick={handleLogin} variant="outline" className="glass-card border-border/40 hover:border-primary/40 transition-all">
-            Login
-          </Button>
+          {/* Login/Logout Button */}
+          {session ? (
+            <Button onClick={handleLogout} variant="outline" className="glass-card border-border/40 hover:border-primary/40 transition-all">
+              Logout
+            </Button>
+          ) : (
+            <Button onClick={handleLogin} variant="outline" className="glass-card border-border/40 hover:border-primary/40 transition-all">
+              Login
+            </Button>
+          )}
         </div>
       </div>
     </nav>
