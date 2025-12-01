@@ -124,12 +124,9 @@ All colors MUST be HSL.
 
 @layer utilities {
   .glass-card {
-    @apply backdrop-blur-xl bg-card/30 border shadow-2xl;
-    border-color: hsl(var(--primary) / 0.3);
-    box-shadow: 
-      0 0 1px 1px hsl(var(--primary) / 0.2),
-      0 8px 32px rgba(0, 0, 0, 0.5),
-      inset 0 0 0 1px hsl(var(--primary) / 0.1);
+    @apply backdrop-blur-xl border shadow-2xl;
+    background-color: hsl(0 0% 100% / 0.05);
+    border-color: hsl(0 0% 100% / 0.1);
   }
   
   .glass-glow {
