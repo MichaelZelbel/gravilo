@@ -124,17 +124,15 @@ All colors MUST be HSL.
 
 @layer utilities {
   .glass-card {
-    @apply backdrop-blur-xl bg-card/30 border shadow-2xl;
-    border-color: hsl(var(--primary) / 0.3);
-    box-shadow: 
-      0 0 1px 1px hsl(var(--primary) / 0.2),
-      0 8px 32px rgba(0, 0, 0, 0.5),
-      inset 0 0 0 1px hsl(var(--primary) / 0.1);
+    @apply backdrop-blur-2xl bg-background/10 border border-border/40 shadow-2xl;
+    box-shadow:
+      0 0 0 1px hsl(var(--primary) / 0.25),
+      0 18px 60px rgba(0, 0, 0, 0.7);
   }
   
   .glass-glow {
-    box-shadow: 0 0 40px hsl(var(--primary) / 0.15), 
-                0 8px 32px rgba(0, 0, 0, 0.5);
+    box-shadow: 0 0 40px hsl(var(--primary) / 0.25), 
+                0 12px 40px rgba(0, 0, 0, 0.8);
   }
   
   .neon-glow-purple {
