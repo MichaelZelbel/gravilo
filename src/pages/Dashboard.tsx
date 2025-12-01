@@ -1,8 +1,24 @@
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Link } from "react-router-dom";
+import { useEffect } from "react";
+import { supabase } from "@/integrations/supabase/client";
 
 const Dashboard = () => {
+  useEffect(() => {
+    const checkSession = async () => {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+
+      if (!session) {
+        window.location.href = "/";
+      }
+    };
+
+    checkSession();
+  }, []);
+
   return (
     <div className="min-h-screen bg-background text-foreground flex">
       {/* Sidebar */}
