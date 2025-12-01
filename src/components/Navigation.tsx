@@ -1,4 +1,5 @@
 import { Button } from "@/components/ui/button";
+import { Link } from "react-router-dom";
 import graviloLogo from "@/assets/gravilo-logo.webp";
 
 const Navigation = () => {
@@ -7,20 +8,20 @@ const Navigation = () => {
       <div className="max-w-7xl mx-auto glass-card glass-glow rounded-3xl px-8 py-4">
         <div className="flex items-center justify-between">
           {/* Logo Section */}
-          <div className="flex items-center gap-3">
+          <Link to="/" className="flex items-center gap-3">
             <img src={graviloLogo} alt="Gravilo Logo" className="w-10 h-10 rounded-xl" />
             <span className="text-xl font-bold text-foreground">Gravilo</span>
-          </div>
+          </Link>
 
           {/* Navigation Links */}
           <div className="hidden md:flex items-center gap-8">
-            <a href="#features" className="text-foreground/80 hover:text-foreground transition-colors">
+            <a href="/#features" className="text-foreground/80 hover:text-foreground transition-colors">
               Features
             </a>
-            <a href="#pricing" className="text-foreground/80 hover:text-foreground transition-colors">
+            <Link to="/pricing" className="text-foreground/80 hover:text-foreground transition-colors">
               Pricing
-            </a>
-            <a href="#docs" className="text-foreground/80 hover:text-foreground transition-colors">
+            </Link>
+            <a href="/#docs" className="text-foreground/80 hover:text-foreground transition-colors">
               Docs
             </a>
           </div>
