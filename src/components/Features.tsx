@@ -1,5 +1,5 @@
 import FeatureCard from "./FeatureCard";
-import { Shield, MessageSquare, Terminal } from "lucide-react";
+import { BookOpen, MessageSquare, Sparkles } from "lucide-react";
 
 const Features = () => {
   return (
@@ -7,9 +7,9 @@ const Features = () => {
       <div className="max-w-7xl mx-auto">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
           <FeatureCard
-            icon={Shield}
-            title="Smart Moderation"
-            description="Keeps conversations clean, friendly, and on-topic — automatically."
+            icon={BookOpen}
+            title="Knowledge Base Uploads"
+            description="Upload your PDFs, rules, onboarding guides, or lore. Gravilo learns them."
           />
           
           <FeatureCard
@@ -19,9 +19,9 @@ const Features = () => {
           />
           
           <FeatureCard
-            icon={Terminal}
-            title="Custom Commands"
-            description="Build tailor-made commands and workflows for your community."
+            icon={Sparkles}
+            title="Custom Personality"
+            description="Make him a developer buddy, a wise wizard, a sarcastic droid, or anything else your community loves."
           />
         </div>
       </div>
