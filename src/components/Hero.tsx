@@ -11,8 +11,11 @@ const Hero = () => {
       <div className="max-w-4xl mx-auto w-full relative z-10">
         {/* Headline Above Glass Card */}
         <div className="text-center mb-12">
-          <h1 className="text-4xl font-bold text-foreground text-center mb-4 leading-loose py-px md:text-6xl">Gravilo: Always There 
-When Your Community Needs Answers.</h1>
+          <h1 className="text-4xl font-bold text-foreground text-center mb-4 leading-loose py-px md:text-6xl">
+            Gravilo: Always There<br />
+            When Your Community<br />
+            Needs Answers.
+          </h1>
         </div>
 
         {/* Glass Card with Bot Image */}
