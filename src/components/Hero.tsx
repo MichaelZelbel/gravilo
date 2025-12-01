@@ -17,10 +17,8 @@ const Hero = () => {
       <div className="max-w-4xl mx-auto w-full relative z-10">
         {/* Headline Above Glass Card */}
         <div className="text-center mb-12">
-          <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold text-foreground leading-tight">
-            Gravilo: Your AI
-            <br />
-            Assistant for Discord
+          <h1 className="text-4xl md:text-5xl font-bold text-foreground text-center mb-4">
+            Gravilo: Always There When Your Community Needs Answers.
           </h1>
         </div>
 
