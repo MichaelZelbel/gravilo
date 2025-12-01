@@ -14,7 +14,86 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      servers: {
+        Row: {
+          active: boolean | null
+          bot_nickname: string | null
+          created_at: string | null
+          discord_guild_id: string
+          icon_url: string | null
+          id: string
+          message_limit: number | null
+          message_usage_current_cycle: number | null
+          name: string
+          owner_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          active?: boolean | null
+          bot_nickname?: string | null
+          created_at?: string | null
+          discord_guild_id: string
+          icon_url?: string | null
+          id?: string
+          message_limit?: number | null
+          message_usage_current_cycle?: number | null
+          name: string
+          owner_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          active?: boolean | null
+          bot_nickname?: string | null
+          created_at?: string | null
+          discord_guild_id?: string
+          icon_url?: string | null
+          id?: string
+          message_limit?: number | null
+          message_usage_current_cycle?: number | null
+          name?: string
+          owner_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "servers_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      users: {
+        Row: {
+          created_at: string | null
+          discord_user_id: string | null
+          email: string | null
+          id: string
+          plan: string | null
+          stripe_customer_id: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          discord_user_id?: string | null
+          email?: string | null
+          id: string
+          plan?: string | null
+          stripe_customer_id?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          discord_user_id?: string | null
+          email?: string | null
+          id?: string
+          plan?: string | null
+          stripe_customer_id?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

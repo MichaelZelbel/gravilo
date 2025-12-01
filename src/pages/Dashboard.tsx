@@ -1,11 +1,26 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
+type Server = {
+  id: string;
+  name: string;
+  icon_url: string | null;
+  message_usage_current_cycle: number;
+  message_limit: number;
+  bot_nickname: string;
+};
+
 const Dashboard = () => {
+  const [session, setSession] = useState<any>(null);
+  const [servers, setServers] = useState<Server[]>([]);
+  const [selectedServerId, setSelectedServerId] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+
   useEffect(() => {
-    const checkSession = async () => {
+    const init = async () => {
       // Automatically bypass auth check in development/preview mode
       if (import.meta.env.DEV) {
+        setLoading(false);
         return;
       }
 
@@ -15,16 +30,117 @@ const Dashboard = () => {
 
       if (!session) {
         window.location.href = "/";
+        return;
       }
+
+      setSession(session);
+
+      // Fetch or create user row
+      const { data: userRow, error: userError } = await supabase
+        .from("users")
+        .select("id")
+        .eq("id", session.user.id)
+        .maybeSingle();
+
+      if (userError) {
+        console.error("Error loading user row", userError);
+      }
+
+      if (!userRow) {
+        // Auto-create user row if missing
+        await supabase.from("users").insert({
+          id: session.user.id,
+          email: session.user.email,
+          plan: "free",
+        });
+      }
+
+      // Fetch servers owned by this user
+      const { data: serversData, error: serversError } = await supabase
+        .from("servers")
+        .select("*")
+        .eq("owner_id", session.user.id)
+        .order("name", { ascending: true });
+
+      if (serversError) {
+        console.error("Error loading servers", serversError);
+      } else {
+        setServers(serversData || []);
+        if (serversData && serversData.length > 0) {
+          setSelectedServerId(serversData[0].id);
+        }
+      }
+
+      setLoading(false);
     };
 
-    checkSession();
+    init();
   }, []);
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
     window.location.href = "/";
   };
+
+  const selectedServer = servers.find((s) => s.id === selectedServerId);
+  const usage = selectedServer?.message_usage_current_cycle ?? 0;
+  const limit = selectedServer?.message_limit ?? 3000;
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-[#050814] text-white flex items-center justify-center">
+        <div className="text-center">
+          <div className="h-12 w-12 rounded-full border-4 border-[#5865F2] border-t-transparent animate-spin mx-auto mb-4"></div>
+          <p className="text-gray-400">Loading dashboard...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!import.meta.env.DEV && servers.length === 0) {
+    return (
+      <div className="min-h-screen bg-[#050814] text-white">
+        <div className="relative min-h-screen overflow-hidden">
+          <div className="pointer-events-none absolute inset-0 opacity-40 bg-[radial-gradient(circle_at_top,_rgba(88,101,242,0.3),_transparent_55%),radial-gradient(circle_at_bottom,_rgba(59,255,182,0.2),_transparent_60%)]" />
+          <div className="pointer-events-none absolute inset-0 opacity-20 bg-[linear-gradient(to_right,_rgba(255,255,255,0.08)_1px,_transparent_1px),linear-gradient(to_bottom,_rgba(255,255,255,0.08)_1px,_transparent_1px)] bg-[size:80px_80px]" />
+
+          <div className="relative z-10 flex flex-col min-h-screen px-6 py-6 md:px-10 md:py-8">
+            <header className="backdrop-blur-xl bg-white/5 border border-white/10 rounded-2xl px-4 md:px-6 py-3 flex items-center justify-between shadow-[0_0_30px_rgba(0,0,0,0.6)]">
+              <div className="flex items-center gap-3">
+                <div className="h-8 w-8 rounded-full bg-gradient-to-tr from-[#5865F2] to-[#3BFFB6] flex items-center justify-center text-sm font-bold">
+                  G
+                </div>
+                <span className="font-semibold tracking-wide">Gravilo Dashboard</span>
+              </div>
+
+              <button
+                onClick={handleLogout}
+                className="text-xs sm:text-sm px-3 py-1.5 rounded-full bg-white/10 hover:bg-white/20 border border-white/20 transition"
+              >
+                Logout
+              </button>
+            </header>
+
+            <div className="flex-1 flex items-center justify-center">
+              <div className="backdrop-blur-2xl bg-white/5 border border-white/10 rounded-3xl p-8 max-w-md text-center">
+                <h1 className="text-2xl font-bold mb-3">No servers connected</h1>
+                <p className="text-gray-300 text-sm mb-5">
+                  Add Gravilo to a Discord server using the "Add to Discord" button on the homepage,
+                  then come back here to configure it.
+                </p>
+                <a
+                  href="/"
+                  className="inline-flex items-center justify-center px-6 py-3 rounded-full bg-[#5865F2] hover:bg-[#6b74ff] shadow-[0_0_18px_rgba(88,101,242,0.7)] text-sm"
+                >
+                  Go to Homepage
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#050814] text-white">
@@ -46,13 +162,24 @@ const Dashboard = () => {
 
             {/* Center: server + context */}
             <div className="hidden md:flex items-center gap-4">
-              <select className="bg-white/5 border border-white/20 rounded-xl px-3 py-1.5 text-sm text-gray-200">
-                <option>Antigravity Server</option>
-                <option>Another Server</option>
+              <select 
+                className="bg-white/5 border border-white/20 rounded-xl px-3 py-1.5 text-sm text-gray-200"
+                value={selectedServerId || ""}
+                onChange={(e) => setSelectedServerId(e.target.value)}
+              >
+                {servers.length === 0 && (
+                  <option value="">No servers connected</option>
+                )}
+                {servers.map((srv) => (
+                  <option key={srv.id} value={srv.id}>
+                    {srv.name || "Unnamed server"}
+                  </option>
+                ))}
               </select>
               <select className="bg-white/5 border border-white/20 rounded-xl px-3 py-1.5 text-sm text-gray-200">
-                <option>Dev Community</option>
-                <option>Main Community</option>
+                <option>All Contexts</option>
+                <option>Dev</option>
+                <option>Support</option>
               </select>
             </div>
 
@@ -96,7 +223,9 @@ const Dashboard = () => {
                         <span className="text-xs uppercase tracking-wide text-gray-400 mb-1">
                           Current Usage
                         </span>
-                        <span className="text-2xl font-semibold">1,240 / 3,000</span>
+                        <span className="text-2xl font-semibold">
+                          {usage.toLocaleString()} / {limit.toLocaleString()}
+                        </span>
                         <span className="text-xs text-gray-400 mt-1">Resets in 27 days</span>
                       </div>
                     </div>
@@ -141,8 +270,8 @@ const Dashboard = () => {
 
                 <div className="flex justify-between items-center bg-white/5 rounded-2xl px-4 py-3 border border-white/10">
                   <div>
-                    <p className="text-xs text-gray-400">Personality Preset</p>
-                    <p className="text-lg font-semibold">Gen Z Gamer</p>
+                    <p className="text-xs text-gray-400">Bot Nickname</p>
+                    <p className="text-lg font-semibold">{selectedServer?.bot_nickname || 'Gravilo'}</p>
                   </div>
                 </div>
               </div>
