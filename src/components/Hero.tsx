@@ -40,9 +40,15 @@ const Hero = () => {
 
           {/* CTA Button - positioned below and overlapping glass card */}
           <div className="flex justify-center -mt-6 relative z-20 isolate overflow-hidden">
-            <Button size="lg" className="bg-gradient-to-r from-primary to-secondary hover:opacity-90 transition-all neon-glow-purple text-lg px-12 py-6 rounded-2xl shadow-2xl">
-              Add to Discord
-            </Button>
+            <a
+              href="https://discord.com/api/oauth2/authorize?client_id=1442892578264715385&permissions=534723947584&scope=bot"
+              target="_blank"
+              rel="noreferrer"
+            >
+              <Button size="lg" className="bg-gradient-to-r from-primary to-secondary hover:opacity-90 transition-all neon-glow-purple text-lg px-12 py-6 rounded-2xl shadow-2xl">
+                Add to Discord
+              </Button>
+            </a>
           </div>
         </div>
 

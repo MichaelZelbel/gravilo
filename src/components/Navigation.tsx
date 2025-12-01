@@ -1,8 +1,17 @@
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 import graviloLogo from "@/assets/gravilo-logo.webp";
+import { supabase } from "@/integrations/supabase/client";
 
 const Navigation = () => {
+  const handleLogin = async () => {
+    await supabase.auth.signInWithOAuth({
+      provider: "discord",
+      options: {
+        redirectTo: `${window.location.origin}/dashboard`,
+      },
+    });
+  };
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 px-6 py-4">
       <div className="max-w-7xl mx-auto glass-card glass-glow rounded-3xl px-8 py-4">
@@ -27,7 +36,7 @@ const Navigation = () => {
           </div>
 
           {/* Login Button */}
-          <Button variant="outline" className="glass-card border-border/40 hover:border-primary/40 transition-all">
+          <Button onClick={handleLogin} variant="outline" className="glass-card border-border/40 hover:border-primary/40 transition-all">
             Login
           </Button>
         </div>
