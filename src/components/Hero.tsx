@@ -5,7 +5,16 @@ import heroBackground from "@/assets/hero-background-grid.webp";
 const Hero = () => {
   return (
     <section className="min-h-screen flex items-center justify-center px-6 pt-20 pb-20 relative">
-      <div className="max-w-4xl mx-auto w-full">
+      {/* Background Grid Image - Full Width */}
+      <div className="absolute inset-0 w-full h-full overflow-hidden">
+        <img 
+          src={heroBackground} 
+          alt="" 
+          className="w-full h-full object-cover opacity-60"
+        />
+      </div>
+
+      <div className="max-w-4xl mx-auto w-full relative z-10">
         {/* Headline Above Glass Card */}
         <div className="text-center mb-12">
           <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold text-foreground leading-tight">
@@ -17,14 +26,6 @@ const Hero = () => {
 
         {/* Glass Card with Bot Image */}
         <div className="relative max-w-xl mx-auto">
-          {/* Background Grid Image */}
-          <div className="absolute inset-0 -z-10 flex items-center justify-center">
-            <img 
-              src={heroBackground} 
-              alt="" 
-              className="w-full h-full object-cover opacity-80"
-            />
-          </div>
 
           {/* Floating code symbols */}
           <div className="absolute -left-8 top-1/4 text-3xl text-accent/60 font-mono z-10">{"{ }"}</div>
