@@ -48,9 +48,11 @@ const Hero = () => {
 
           {/* CTA Button - positioned below and overlapping glass card */}
           <div className="flex justify-center -mt-6 relative z-20 isolate">
+            {/* Overlay to avoid glass edge artifact under the button */}
+            <div className="absolute inset-x-0 top-0 h-20 bg-background/80 rounded-3xl pointer-events-none" />
             <Button 
               size="lg"
-              className="bg-gradient-to-r from-primary to-secondary hover:opacity-90 transition-all neon-glow-purple text-lg px-12 py-6 rounded-2xl shadow-2xl"
+              className="relative bg-gradient-to-r from-primary to-secondary hover:opacity-90 transition-all neon-glow-purple text-lg px-12 py-6 rounded-2xl shadow-2xl"
             >
               Add to Discord
             </Button>
