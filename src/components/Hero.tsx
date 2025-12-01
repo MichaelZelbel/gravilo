@@ -49,7 +49,7 @@ const Hero = () => {
         {/* Subheadline below button */}
         <div className="text-center mt-8">
           <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto">
-            Helpful, fast, always there when your community needs answers.
+            Add friendly AI power to your server with a few clicks!
           </p>
         </div>
       </div>
