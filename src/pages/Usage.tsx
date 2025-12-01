@@ -6,9 +6,8 @@ const Usage = () => {
 
   useEffect(() => {
     const checkSession = async () => {
-      // Skip auth check if dev mode is enabled via query parameter
-      const params = new URLSearchParams(window.location.search);
-      if (params.get('dev') === 'true') {
+      // Automatically bypass auth check in development/preview mode
+      if (import.meta.env.DEV) {
         return;
       }
 
