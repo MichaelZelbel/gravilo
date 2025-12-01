@@ -1,25 +1,18 @@
 import { Button } from "@/components/ui/button";
 import graviloBot from "@/assets/gravilo-bot.webp";
 import heroBackground from "@/assets/hero-background-grid.webp";
-
 const Hero = () => {
-  return (
-    <section className="min-h-screen flex items-center justify-center px-6 pt-20 pb-20 relative">
+  return <section className="min-h-screen flex items-center justify-center px-6 pt-20 pb-20 relative">
       {/* Background Grid Image - Full Width */}
       <div className="absolute inset-0 w-full h-full overflow-hidden">
-        <img 
-          src={heroBackground} 
-          alt="" 
-          className="w-full h-full object-cover opacity-60"
-        />
+        <img src={heroBackground} alt="" className="w-full h-full object-cover opacity-60" />
       </div>
 
       <div className="max-w-4xl mx-auto w-full relative z-10">
         {/* Headline Above Glass Card */}
         <div className="text-center mb-12">
-          <h1 className="text-4xl md:text-5xl font-bold text-foreground text-center mb-4 leading-loose">
-            Gravilo: Always There When Your Community Needs Answers.
-          </h1>
+          <h1 className="text-4xl font-bold text-foreground text-center mb-4 leading-loose py-px md:text-6xl">Gravilo: Always There 
+When Your Community Needs Answers.</h1>
         </div>
 
         {/* Glass Card with Bot Image */}
@@ -35,21 +28,16 @@ const Hero = () => {
           <div className="glass-card glass-glow neon-glow-blue rounded-3xl relative overflow-visible z-10">
             {/* Bot Image - positioned so antenna peeks out top, bottom aligned with card edge */}
             <div className="relative h-[500px] flex items-end justify-center">
-              <img 
-                src={graviloBot} 
-                alt="Gravilo Bot" 
-                className="absolute bottom-0 w-full h-auto object-contain"
-                style={{ maxHeight: "110%", transform: "translateY(0)" }}
-              />
+              <img src={graviloBot} alt="Gravilo Bot" className="absolute bottom-0 w-full h-auto object-contain" style={{
+              maxHeight: "110%",
+              transform: "translateY(0)"
+            }} />
             </div>
           </div>
 
           {/* CTA Button - positioned below and overlapping glass card */}
           <div className="flex justify-center -mt-6 relative z-20 isolate overflow-hidden">
-            <Button 
-              size="lg"
-              className="bg-gradient-to-r from-primary to-secondary hover:opacity-90 transition-all neon-glow-purple text-lg px-12 py-6 rounded-2xl shadow-2xl"
-            >
+            <Button size="lg" className="bg-gradient-to-r from-primary to-secondary hover:opacity-90 transition-all neon-glow-purple text-lg px-12 py-6 rounded-2xl shadow-2xl">
               Add to Discord
             </Button>
           </div>
@@ -62,8 +50,6 @@ const Hero = () => {
           </p>
         </div>
       </div>
-    </section>
-  );
+    </section>;
 };
-
 export default Hero;
