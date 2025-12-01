@@ -14,11 +14,51 @@ export type Database = {
   }
   public: {
     Tables: {
+      server_usage: {
+        Row: {
+          created_at: string | null
+          cycle_end: string
+          cycle_start: string
+          discord_guild_id: string
+          id: string
+          messages: number | null
+          server_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          cycle_end?: string
+          cycle_start?: string
+          discord_guild_id: string
+          id?: string
+          messages?: number | null
+          server_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          cycle_end?: string
+          cycle_start?: string
+          discord_guild_id?: string
+          id?: string
+          messages?: number | null
+          server_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "server_usage_server_id_fkey"
+            columns: ["server_id"]
+            isOneToOne: false
+            referencedRelation: "servers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       servers: {
         Row: {
           active: boolean | null
           bot_nickname: string | null
           created_at: string | null
+          cycle_end: string | null
+          cycle_start: string | null
           discord_guild_id: string
           icon_url: string | null
           id: string
@@ -32,6 +72,8 @@ export type Database = {
           active?: boolean | null
           bot_nickname?: string | null
           created_at?: string | null
+          cycle_end?: string | null
+          cycle_start?: string | null
           discord_guild_id: string
           icon_url?: string | null
           id?: string
@@ -45,6 +87,8 @@ export type Database = {
           active?: boolean | null
           bot_nickname?: string | null
           created_at?: string | null
+          cycle_end?: string | null
+          cycle_start?: string | null
           discord_guild_id?: string
           icon_url?: string | null
           id?: string
