@@ -8,6 +8,8 @@ type Server = {
   message_usage_current_cycle: number;
   message_limit: number;
   bot_nickname: string;
+  cycle_start: string;
+  cycle_end: string;
 };
 
 const Dashboard = () => {
@@ -58,7 +60,7 @@ const Dashboard = () => {
       // Fetch servers owned by this user
       const { data: serversData, error: serversError } = await supabase
         .from("servers")
-        .select("*")
+        .select("id, name, icon_url, discord_guild_id, bot_nickname, message_usage_current_cycle, message_limit, cycle_start, cycle_end, active")
         .eq("owner_id", session.user.id)
         .order("name", { ascending: true });
 
@@ -85,6 +87,8 @@ const Dashboard = () => {
   const selectedServer = servers.find((s) => s.id === selectedServerId);
   const usage = selectedServer?.message_usage_current_cycle ?? 0;
   const limit = selectedServer?.message_limit ?? 3000;
+  const cycleEnd = selectedServer?.cycle_end ? new Date(selectedServer.cycle_end) : null;
+  const cycleEndFormatted = cycleEnd ? cycleEnd.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'N/A';
 
   if (loading) {
     return (
@@ -226,7 +230,7 @@ const Dashboard = () => {
                         <span className="text-2xl font-semibold">
                           {usage.toLocaleString()} / {limit.toLocaleString()}
                         </span>
-                        <span className="text-xs text-gray-400 mt-1">Resets in 27 days</span>
+                        <span className="text-xs text-gray-400 mt-1">Resets {cycleEndFormatted}</span>
                       </div>
                     </div>
                   </div>
