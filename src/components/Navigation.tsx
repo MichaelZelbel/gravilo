@@ -1,4 +1,5 @@
 import { Button } from "@/components/ui/button";
+import graviloLogo from "@/assets/gravilo-logo.webp";
 
 const Navigation = () => {
   return (
@@ -7,9 +8,7 @@ const Navigation = () => {
         <div className="flex items-center justify-between">
           {/* Logo Section */}
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-secondary flex items-center justify-center">
-              <span className="text-2xl">🤖</span>
-            </div>
+            <img src={graviloLogo} alt="Gravilo Logo" className="w-10 h-10 rounded-xl" />
             <span className="text-xl font-bold text-foreground">Gravilo</span>
           </div>
 
