@@ -10,6 +10,7 @@ import Pricing from "./pages/Pricing";
 import Features from "./pages/Features";
 import Dashboard from "./pages/Dashboard";
 import Usage from "./pages/Usage";
+import BillingSuccess from "./pages/BillingSuccess";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -39,6 +40,7 @@ const App = () => {
             <Route path="/features" element={<Features />} />
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/usage" element={<Usage />} />
+            <Route path="/billing/success" element={<BillingSuccess />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
