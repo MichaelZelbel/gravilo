@@ -1,12 +1,13 @@
 # Stripe Account Inventory
 
 **Account ID:** `acct_1SEYTJAiLddHHjhk`  
-**Display Name:** cherishly.ai  
-**Mode:** Test (based on `sk_test_` key prefix)
+**Display Name:** cherishly.ai
 
 ---
 
-## Products
+## Live Mode (Production)
+
+### Products
 
 | Product ID | Name | Type | Description |
 |------------|------|------|-------------|
@@ -15,9 +16,7 @@
 | `prod_TNIBGWa81nrBq1` | Pro Plan | Service | For professionals & consultants. 3 brands tracked, daily analysis updates, full competitor visibility, AI optimization tips. |
 | `prod_TAzrLJxeEwSpuD` | Cherishly Pro | Service | Unlock AI chats with Claire, email notifications, full Moments Log, and advanced details to deepen your relationships. |
 
----
-
-## Prices
+### Prices
 
 | Price ID | Product | Amount | Currency | Type | Interval |
 |----------|---------|--------|----------|------|----------|
@@ -26,35 +25,51 @@
 | `price_1SQXbNAiLddHHjhkDHD8mwPx` | Pro Plan (`prod_TNIBGWa81nrBq1`) | $29.00 | USD | Recurring | Monthly |
 | `price_1SEdrIAiLddHHjhkSU5RFIjV` | Cherishly Pro (`prod_TAzrLJxeEwSpuD`) | $4.99 | USD | Recurring | Monthly |
 
+### Webhooks
+
+| Name | Endpoint URL | Events |
+|------|--------------|--------|
+| Gravilo | `https://sohyviltwgpuslbjzqzh.supabase.co/functions/v1/stripe-webhook` | `checkout.session.completed`, `customer.subscription.deleted` |
+
+---
+
+## Test Mode
+
+### Products
+*None configured*
+
+### Prices
+*None configured*
+
+### Webhooks
+*None configured*
+
 ---
 
 ## Gravilo-Specific Configuration
 
-### Active Price for Gravilo
-- **Price ID:** `price_1SZiF5AiLddHHjhkm32oqSVI`
+### Active IDs for Gravilo
 - **Product ID:** `prod_TWlmtCgj7ZHDAZ`
+- **Price ID:** `price_1SZiF5AiLddHHjhkm32oqSVI`
 - **Amount:** $14.99/month
 
-### Webhook Endpoint (Configured in Project)
-- **URL:** `https://sohyviltwgpuslbjzqzh.supabase.co/functions/v1/stripe-webhook`
-- **Events Handled:**
-  - `checkout.session.completed` → Upgrades user to premium
-  - `customer.subscription.deleted` → Downgrades user to free
-- **Security:** Filters by `metadata.app === "gravilo"` and `price_id === "price_1SZiF5AiLddHHjhkm32oqSVI"`
+### Webhook Security
+- Filters by `metadata.app === "gravilo"`
+- Verifies `price_id === "price_1SZiF5AiLddHHjhkm32oqSVI"`
 
 ---
 
-## Secrets Configured
+## Secrets Required
 
-| Secret Name | Purpose |
-|-------------|---------|
-| `STRIPE_SECRET_KEY` | API authentication |
-| `STRIPE_WEBHOOK_SECRET` | Webhook signature verification |
+| Secret Name | Purpose | Mode |
+|-------------|---------|------|
+| `STRIPE_SECRET_KEY` | API authentication (edge functions) | Should be `sk_live_...` for production |
+| `STRIPE_WEBHOOK_SECRET` | Webhook signature verification | From Stripe webhook settings |
 
 ---
 
 ## Notes
 
-- All prices are in **test mode** (based on key prefix)
-- The Stripe account appears shared across multiple products (Gravilo, Cherishly, unnamed Business/Pro plans)
-- Gravilo webhook is scoped to only process its own product via metadata filtering
+- Test mode is empty - **create test products/prices before testing**
+- Stripe account is shared across multiple apps (Gravilo, Cherishly, Business/Pro plans)
+- Gravilo webhook filters ensure only Gravilo subscriptions trigger plan updates
