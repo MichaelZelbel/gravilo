@@ -40,20 +40,31 @@ serve(async (req) => {
       console.log("[CREATE-CHECKOUT] No existing customer found");
     }
 
-    // Save customer ID to users table if we found one
-    if (customerId) {
-      await supabaseClient
-        .from("users")
-        .update({ stripe_customer_id: customerId })
-        .eq("id", user.id);
+    // Create or save customer ID
+    if (!customerId) {
+      const customer = await stripe.customers.create({
+        email: user.email,
+        metadata: {
+          supabase_user_id: user.id,
+          app: "gravilo",
+        },
+      });
+      customerId = customer.id;
+      
+      console.log("[CREATE-CHECKOUT] Created new customer:", customerId);
     }
+
+    // Save customer ID to users table
+    await supabaseClient
+      .from("users")
+      .update({ stripe_customer_id: customerId })
+      .eq("id", user.id);
 
     const origin = req.headers.get("origin") || "http://localhost:3000";
     
-    // Create checkout session
+    // Create checkout session with Gravilo metadata
     const session = await stripe.checkout.sessions.create({
       customer: customerId,
-      customer_email: customerId ? undefined : user.email,
       line_items: [
         {
           price: "price_1SZiF5AiLddHHjhkm32oqSVI", // Gravilo Premium monthly price
@@ -61,10 +72,11 @@ serve(async (req) => {
         },
       ],
       mode: "subscription",
-      success_url: `${origin}/dashboard?checkout=success`,
-      cancel_url: `${origin}/dashboard?checkout=cancel`,
+      success_url: `${origin}/dashboard?upgrade=success`,
+      cancel_url: `${origin}/usage`,
       metadata: {
-        user_id: user.id,
+        app: "gravilo",
+        supabase_user_id: user.id,
       },
     });
 
