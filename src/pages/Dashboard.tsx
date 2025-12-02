@@ -146,23 +146,55 @@ const Dashboard = () => {
       // Get the user's discord_user_id for server filtering
       const userDiscordId = userRow?.discord_user_id || discordUserId;
 
-      // Fetch servers owned by this user (either by owner_id or matching discord_user_id)
-      let serversQuery = supabase
-        .from("servers")
-        .select("id, name, icon_url, discord_guild_id, bot_nickname, message_usage_current_cycle, message_limit, cycle_start, cycle_end, active")
-        .eq("owner_id", session.user.id)
-        .order("active", { ascending: false })
-        .order("name", { ascending: true });
+      if (userDiscordId) {
+        // Auto-claim servers: find servers where owner_discord_id matches and upsert into user_servers
+        const { data: ownedServers } = await supabase
+          .from("servers")
+          .select("discord_guild_id")
+          .eq("owner_discord_id", userDiscordId);
 
-      const { data: serversData, error: serversError } = await serversQuery;
-
-      if (serversError) {
-        console.error("Error loading servers", serversError);
-      } else {
-        setServers(serversData || []);
-        if (serversData && serversData.length > 0) {
-          setSelectedServerId(serversData[0].id);
+        if (ownedServers && ownedServers.length > 0) {
+          const mappings = ownedServers.map(s => ({
+            discord_user_id: userDiscordId,
+            discord_server_id: s.discord_guild_id,
+          }));
+          
+          // Upsert mappings (ignore duplicates)
+          await supabase
+            .from("user_servers")
+            .upsert(mappings, { onConflict: "discord_user_id,discord_server_id", ignoreDuplicates: true });
         }
+
+        // Fetch servers the user has access to via user_servers
+        const { data: userServerMappings } = await supabase
+          .from("user_servers")
+          .select("discord_server_id")
+          .eq("discord_user_id", userDiscordId);
+
+        if (userServerMappings && userServerMappings.length > 0) {
+          const serverIds = userServerMappings.map(m => m.discord_server_id);
+          
+          const { data: serversData, error: serversError } = await supabase
+            .from("servers")
+            .select("id, name, icon_url, discord_guild_id, bot_nickname, message_usage_current_cycle, message_limit, cycle_start, cycle_end, active")
+            .in("discord_guild_id", serverIds)
+            .order("active", { ascending: false })
+            .order("name", { ascending: true });
+
+          if (serversError) {
+            console.error("Error loading servers", serversError);
+          } else {
+            setServers(serversData || []);
+            if (serversData && serversData.length > 0) {
+              setSelectedServerId(serversData[0].id);
+            }
+          }
+        } else {
+          setServers([]);
+        }
+      } else {
+        // No discord_user_id, show empty state
+        setServers([]);
       }
 
       setLoading(false);
@@ -370,16 +402,18 @@ const Dashboard = () => {
 
             <div className="flex-1 flex items-center justify-center">
               <div className="backdrop-blur-2xl bg-white/5 border border-white/10 rounded-3xl p-8 max-w-md text-center">
-                <h1 className="text-2xl font-bold mb-3">No servers connected</h1>
+                <h1 className="text-2xl font-bold mb-3">Add Gravilo to your server to get started</h1>
                 <p className="text-gray-300 text-sm mb-5">
-                  Add Gravilo to a Discord server using the "Add to Discord" button on the homepage,
+                  You don't have any servers connected yet. Add Gravilo to a Discord server where you're the owner,
                   then come back here to configure it.
                 </p>
                 <a
-                  href="/"
+                  href="https://discord.com/api/oauth2/authorize?client_id=1442892578264715385&permissions=534723947584&scope=bot"
+                  target="_blank"
+                  rel="noopener noreferrer"
                   className="inline-flex items-center justify-center px-6 py-3 rounded-full bg-[#5865F2] hover:bg-[#6b74ff] shadow-[0_0_18px_rgba(88,101,242,0.7)] text-sm"
                 >
-                  Go to Homepage
+                  Add to Discord
                 </a>
               </div>
             </div>
