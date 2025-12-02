@@ -14,6 +14,48 @@ export type Database = {
   }
   public: {
     Tables: {
+      server_settings: {
+        Row: {
+          created_at: string | null
+          custom_personality_prompt: string | null
+          id: string
+          server_id: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          custom_personality_prompt?: string | null
+          id?: string
+          server_id: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          custom_personality_prompt?: string | null
+          id?: string
+          server_id?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "server_settings_server_id_fkey"
+            columns: ["server_id"]
+            isOneToOne: false
+            referencedRelation: "servers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "server_settings_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       server_usage: {
         Row: {
           created_at: string | null

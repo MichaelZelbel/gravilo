@@ -19,6 +19,9 @@ const Dashboard = () => {
   const [loading, setLoading] = useState(true);
   const [userPlan, setUserPlan] = useState<"free" | "premium" | null>(null);
   const [showSuccessBanner, setShowSuccessBanner] = useState(false);
+  const [customPrompt, setCustomPrompt] = useState("");
+  const [loadingPrompt, setLoadingPrompt] = useState(false);
+  const [savingPrompt, setSavingPrompt] = useState(false);
 
   useEffect(() => {
     // Check for upgrade success in URL params
@@ -106,6 +109,48 @@ const Dashboard = () => {
     init();
   }, []);
 
+  // Load server settings when selected server changes
+  useEffect(() => {
+    const loadSettings = async () => {
+      if (!selectedServerId || !session) return;
+      
+      setLoadingPrompt(true);
+
+      try {
+        const { data, error } = await supabase.functions.invoke("get-server-settings", {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${session.access_token}`,
+          },
+          body: undefined,
+        });
+
+        // Build URL with query params manually since invoke doesn't support query params directly
+        const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/get-server-settings?server_id=${selectedServerId}`;
+        const response = await fetch(url, {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${session.access_token}`,
+          },
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          setCustomPrompt(data?.custom_personality_prompt ?? "");
+        } else {
+          setCustomPrompt("");
+        }
+      } catch (err) {
+        console.error("Error loading settings:", err);
+        setCustomPrompt("");
+      }
+
+      setLoadingPrompt(false);
+    };
+
+    loadSettings();
+  }, [selectedServerId, session]);
+
   const handleUpgrade = async () => {
     try {
       const { data: sessionData } = await supabase.auth.getSession();
@@ -140,6 +185,38 @@ const Dashboard = () => {
   const handleLogout = async () => {
     await supabase.auth.signOut();
     window.location.href = "/";
+  };
+
+  const handleSavePrompt = async () => {
+    if (!selectedServerId || !session) return;
+    
+    setSavingPrompt(true);
+
+    try {
+      const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/save-server-settings`;
+      const response = await fetch(url, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          server_id: selectedServerId,
+          custom_personality_prompt: customPrompt,
+        }),
+      });
+
+      if (response.ok) {
+        // Optionally show a toast or success indicator
+        console.log("Settings saved successfully");
+      } else {
+        console.error("Failed to save settings");
+      }
+    } catch (err) {
+      console.error("Error saving settings:", err);
+    }
+
+    setSavingPrompt(false);
   };
 
   const selectedServer = servers.find((s) => s.id === selectedServerId);
@@ -397,7 +474,10 @@ const Dashboard = () => {
                     <div className="space-y-2">
                       <label className="text-xs text-gray-300">Custom Personality Prompt</label>
                       <textarea
-                        className="w-full h-28 bg-black/30 border border-white/15 rounded-2xl px-3 py-3 text-xs text-gray-100 resize-none"
+                        value={customPrompt}
+                        onChange={(e) => setCustomPrompt(e.target.value)}
+                        disabled={loadingPrompt}
+                        className="w-full h-28 bg-black/30 border border-white/15 rounded-2xl px-3 py-3 text-xs text-gray-100 resize-none outline-none focus:border-[#A855F7] focus:ring-1 focus:ring-[#A855F7] disabled:opacity-50"
                         placeholder="You are Gravilo, a nerdy developer buddy for the Antigravity community. Use slang and gaming references."
                       />
                     </div>
@@ -406,8 +486,12 @@ const Dashboard = () => {
                       <button className="text-xs px-4 py-2 rounded-full bg-white/5 hover:bg-white/10 border border-white/20">
                         Reset to Default
                       </button>
-                      <button className="text-xs px-5 py-2 rounded-full bg-[#5865F2] hover:bg-[#6b74ff] shadow-[0_0_18px_rgba(88,101,242,0.7)]">
-                        Save
+                      <button 
+                        onClick={handleSavePrompt}
+                        disabled={savingPrompt || !selectedServerId || loadingPrompt}
+                        className="text-xs px-5 py-2 rounded-full bg-[#5865F2] hover:bg-[#6b74ff] disabled:opacity-50 shadow-[0_0_18px_rgba(88,101,242,0.7)] transition"
+                      >
+                        {savingPrompt ? "Saving..." : "Save"}
                       </button>
                     </div>
                   </>
