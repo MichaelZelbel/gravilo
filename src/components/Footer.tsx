@@ -7,7 +7,7 @@ const Footer = () => {
             <a href="#terms" className="hover:text-foreground transition-colors">
               Terms
             </a>
-            <a href="#privacy" className="hover:text-foreground transition-colors">
+            <a href="/privacy" className="hover:text-foreground transition-colors">
               Privacy
             </a>
             <a href="#status" className="hover:text-foreground transition-colors">
