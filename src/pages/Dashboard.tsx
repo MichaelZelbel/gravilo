@@ -18,6 +18,20 @@ const Dashboard = () => {
   const [selectedServerId, setSelectedServerId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [userPlan, setUserPlan] = useState<"free" | "premium" | null>(null);
+  const [showSuccessBanner, setShowSuccessBanner] = useState(false);
+
+  useEffect(() => {
+    // Check for upgrade success in URL params
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("upgrade") === "success") {
+      setShowSuccessBanner(true);
+      // Clear URL params after showing banner
+      window.history.replaceState({}, "", "/dashboard");
+      
+      // Auto-hide banner after 5 seconds
+      setTimeout(() => setShowSuccessBanner(false), 5000);
+    }
+  }, []);
 
   useEffect(() => {
     const init = async () => {
@@ -261,6 +275,19 @@ const Dashboard = () => {
               </button>
             </div>
           </header>
+
+          {/* Success Banner */}
+          {showSuccessBanner && (
+            <div className="bg-[#3BFFB6]/20 border border-[#3BFFB6]/40 text-[#3BFFB6] px-4 py-3 rounded-xl text-sm flex items-center justify-between animate-in fade-in slide-in-from-top-4 duration-500">
+              <span className="font-semibold">🎉 Your plan has been upgraded to Premium!</span>
+              <button 
+                onClick={() => setShowSuccessBanner(false)}
+                className="text-[#3BFFB6] hover:text-white transition"
+              >
+                ✕
+              </button>
+            </div>
+          )}
 
           {/* Main Content */}
           <main className="flex-1 space-y-6">

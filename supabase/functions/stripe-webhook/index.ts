@@ -31,26 +31,58 @@ serve(async (req) => {
     // Handle checkout.session.completed
     if (event.type === "checkout.session.completed") {
       const session = event.data.object as Stripe.Checkout.Session;
-      const userId = session.metadata?.user_id;
+
+      // 🔒 Security: Only handle Gravilo product
+      if (session.metadata?.app !== "gravilo") {
+        console.log("[STRIPE-WEBHOOK] Ignored - not a Gravilo session");
+        return new Response(JSON.stringify({ ignored: true }), {
+          status: 200,
+        });
+      }
+
+      const supabaseUserId = session.metadata?.supabase_user_id;
       const customerId = session.customer as string;
+      const subscriptionId = session.subscription as string;
 
-      console.log("[STRIPE-WEBHOOK] Checkout completed for user:", userId, "customer:", customerId);
+      console.log("[STRIPE-WEBHOOK] Checkout completed for user:", supabaseUserId, "subscription:", subscriptionId);
 
-      if (userId) {
-        // Update user to premium plan and save customer ID
-        const { error } = await supabase
-          .from("users")
-          .update({
-            plan: "premium",
-            stripe_customer_id: customerId,
-          })
-          .eq("id", userId);
+      if (!supabaseUserId) {
+        console.error("[STRIPE-WEBHOOK] Missing supabase_user_id in metadata");
+        return new Response(JSON.stringify({ error: "Missing user metadata" }), {
+          status: 400,
+        });
+      }
 
-        if (error) {
-          console.error("[STRIPE-WEBHOOK] Error updating user:", error);
-        } else {
-          console.log("[STRIPE-WEBHOOK] User upgraded to premium successfully");
-        }
+      // 🔒 Security: Verify this is the Gravilo Premium price
+      const subscription = await stripe.subscriptions.retrieve(subscriptionId, {
+        expand: ["items.data.price"],
+      });
+
+      const graviloPremiumPrice = "price_1SZiF5AiLddHHjhkm32oqSVI";
+      const matchesPrice = subscription.items.data.some(
+        (item: any) => item.price.id === graviloPremiumPrice
+      );
+
+      if (!matchesPrice) {
+        console.log("[STRIPE-WEBHOOK] Ignored - not Gravilo Premium price");
+        return new Response(JSON.stringify({ ignored: true }), {
+          status: 200,
+        });
+      }
+
+      // Update user to premium plan
+      const { error } = await supabase
+        .from("users")
+        .update({
+          plan: "premium",
+          stripe_customer_id: customerId,
+        })
+        .eq("id", supabaseUserId);
+
+      if (error) {
+        console.error("[STRIPE-WEBHOOK] Error updating user:", error);
+      } else {
+        console.log("[STRIPE-WEBHOOK] User upgraded to premium successfully");
       }
     }
 
@@ -60,6 +92,19 @@ serve(async (req) => {
       const customerId = subscription.customer as string;
 
       console.log("[STRIPE-WEBHOOK] Subscription deleted for customer:", customerId);
+
+      // 🔒 Security: Verify this is the Gravilo Premium price
+      const graviloPremiumPrice = "price_1SZiF5AiLddHHjhkm32oqSVI";
+      const matchesPrice = subscription.items.data.some(
+        (item: any) => item.price.id === graviloPremiumPrice
+      );
+
+      if (!matchesPrice) {
+        console.log("[STRIPE-WEBHOOK] Ignored - not Gravilo Premium subscription");
+        return new Response(JSON.stringify({ ignored: true }), {
+          status: 200,
+        });
+      }
 
       // Find user by customer ID and downgrade to free
       const { error } = await supabase
