@@ -53,7 +53,13 @@ export type Database = {
           behavior_mode: string | null
           created_at: string | null
           custom_personality_prompt: string | null
+          discord_server_id: string | null
+          enable_kb_ingestion: boolean | null
+          enable_moderation: boolean | null
           id: string
+          max_reply_tokens: number | null
+          model_name: string | null
+          personality_preset: string | null
           server_id: string
           updated_at: string | null
           use_knowledge_base: boolean | null
@@ -65,7 +71,13 @@ export type Database = {
           behavior_mode?: string | null
           created_at?: string | null
           custom_personality_prompt?: string | null
+          discord_server_id?: string | null
+          enable_kb_ingestion?: boolean | null
+          enable_moderation?: boolean | null
           id?: string
+          max_reply_tokens?: number | null
+          model_name?: string | null
+          personality_preset?: string | null
           server_id: string
           updated_at?: string | null
           use_knowledge_base?: boolean | null
@@ -77,7 +89,13 @@ export type Database = {
           behavior_mode?: string | null
           created_at?: string | null
           custom_personality_prompt?: string | null
+          discord_server_id?: string | null
+          enable_kb_ingestion?: boolean | null
+          enable_moderation?: boolean | null
           id?: string
+          max_reply_tokens?: number | null
+          model_name?: string | null
+          personality_preset?: string | null
           server_id?: string
           updated_at?: string | null
           use_knowledge_base?: boolean | null

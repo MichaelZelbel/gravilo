@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { RefreshCw, Shield } from "lucide-react";
+import { RefreshCw, Shield, Settings } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 type Server = {
   id: string;
@@ -497,6 +498,17 @@ const Dashboard = () => {
                 <RefreshCw className={`h-3.5 w-3.5 ${syncing ? "animate-spin" : ""}`} />
                 <span className="hidden sm:inline">Sync</span>
               </button>
+
+              {selectedServerId && (
+                <a
+                  href={`/settings?server_id=${selectedServerId}&name=${encodeURIComponent(servers.find(s => s.id === selectedServerId)?.name || 'Server')}`}
+                  className="text-xs px-3 py-1.5 rounded-full bg-white/5 hover:bg-white/10 border border-white/20 transition flex items-center gap-1.5"
+                  title="Server Settings"
+                >
+                  <Settings className="h-3.5 w-3.5" />
+                  <span className="hidden sm:inline">Settings</span>
+                </a>
+              )}
 
               <button
                 onClick={handleLogout}
