@@ -19,9 +19,17 @@ const Dashboard = () => {
   const [loading, setLoading] = useState(true);
   const [userPlan, setUserPlan] = useState<"free" | "premium" | null>(null);
   const [showSuccessBanner, setShowSuccessBanner] = useState(false);
+  
+  // Settings state
   const [customPrompt, setCustomPrompt] = useState("");
   const [loadingPrompt, setLoadingPrompt] = useState(false);
   const [savingPrompt, setSavingPrompt] = useState(false);
+  
+  // Behavior flags state
+  const [behaviorMode, setBehaviorMode] = useState<"quiet" | "normal" | "active">("quiet");
+  const [useKnowledgeBase, setUseKnowledgeBase] = useState(true);
+  const [allowProactiveReplies, setAllowProactiveReplies] = useState(false);
+  const [allowFunReplies, setAllowFunReplies] = useState(true);
 
   useEffect(() => {
     // Check for upgrade success in URL params
@@ -117,16 +125,8 @@ const Dashboard = () => {
       setLoadingPrompt(true);
 
       try {
-        const { data, error } = await supabase.functions.invoke("get-server-settings", {
-          method: "GET",
-          headers: {
-            Authorization: `Bearer ${session.access_token}`,
-          },
-          body: undefined,
-        });
-
         // Build URL with query params manually since invoke doesn't support query params directly
-        const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/get-server-settings?server_id=${selectedServerId}`;
+        const url = `https://sohyviltwgpuslbjzqzh.supabase.co/functions/v1/get-server-settings?server_id=${selectedServerId}`;
         const response = await fetch(url, {
           method: "GET",
           headers: {
@@ -137,12 +137,37 @@ const Dashboard = () => {
         if (response.ok) {
           const data = await response.json();
           setCustomPrompt(data?.custom_personality_prompt ?? "");
+          setBehaviorMode(data?.behavior_mode ?? "quiet");
+          setUseKnowledgeBase(
+            typeof data?.use_knowledge_base === "boolean"
+              ? data.use_knowledge_base
+              : true
+          );
+          setAllowProactiveReplies(
+            typeof data?.allow_proactive_replies === "boolean"
+              ? data.allow_proactive_replies
+              : false
+          );
+          setAllowFunReplies(
+            typeof data?.allow_fun_replies === "boolean"
+              ? data.allow_fun_replies
+              : true
+          );
         } else {
+          // Reset to defaults on error
           setCustomPrompt("");
+          setBehaviorMode("quiet");
+          setUseKnowledgeBase(true);
+          setAllowProactiveReplies(false);
+          setAllowFunReplies(true);
         }
       } catch (err) {
         console.error("Error loading settings:", err);
         setCustomPrompt("");
+        setBehaviorMode("quiet");
+        setUseKnowledgeBase(true);
+        setAllowProactiveReplies(false);
+        setAllowFunReplies(true);
       }
 
       setLoadingPrompt(false);
@@ -187,13 +212,13 @@ const Dashboard = () => {
     window.location.href = "/";
   };
 
-  const handleSavePrompt = async () => {
+  const handleSaveSettings = async () => {
     if (!selectedServerId || !session) return;
     
     setSavingPrompt(true);
 
     try {
-      const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/save-server-settings`;
+      const url = `https://sohyviltwgpuslbjzqzh.supabase.co/functions/v1/save-server-settings`;
       const response = await fetch(url, {
         method: "POST",
         headers: {
@@ -203,11 +228,14 @@ const Dashboard = () => {
         body: JSON.stringify({
           server_id: selectedServerId,
           custom_personality_prompt: customPrompt,
+          behavior_mode: behaviorMode,
+          use_knowledge_base: useKnowledgeBase,
+          allow_proactive_replies: allowProactiveReplies,
+          allow_fun_replies: allowFunReplies,
         }),
       });
 
       if (response.ok) {
-        // Optionally show a toast or success indicator
         console.log("Settings saved successfully");
       } else {
         console.error("Failed to save settings");
@@ -482,16 +510,103 @@ const Dashboard = () => {
                       />
                     </div>
 
-                    <div className="flex justify-end gap-3 mt-4">
+                    {/* Behavior & Safety Section */}
+                    <div className="mt-5 pt-5 border-t border-white/10">
+                      <h3 className="text-sm font-semibold mb-4 text-gray-200">Behavior & Safety</h3>
+                      
+                      {/* Mode selector */}
+                      <div className="mb-4">
+                        <p className="text-xs font-medium text-gray-300 mb-2">Behavior mode</p>
+                        <div className="inline-flex rounded-full bg-white/5 border border-white/10 p-1 text-xs">
+                          {[
+                            { key: "quiet", label: "Quiet" },
+                            { key: "normal", label: "Normal" },
+                            { key: "active", label: "Active" },
+                          ].map((mode) => (
+                            <button
+                              key={mode.key}
+                              type="button"
+                              onClick={() => setBehaviorMode(mode.key as "quiet" | "normal" | "active")}
+                              className={`px-3 py-1 rounded-full transition ${
+                                behaviorMode === mode.key
+                                  ? "bg-[#5865F2] text-white shadow-[0_0_16px_rgba(88,101,242,0.7)]"
+                                  : "text-gray-300 hover:bg-white/5"
+                              }`}
+                            >
+                              {mode.label}
+                            </button>
+                          ))}
+                        </div>
+                        <p className="mt-1 text-[11px] text-gray-400">
+                          Quiet: only when pinged · Normal: when pinged + sometimes joins · Active: jumps in more often.
+                        </p>
+                      </div>
+
+                      {/* Toggles */}
+                      <div className="space-y-3 text-xs text-gray-200">
+                        <label className="flex items-center justify-between gap-4">
+                          <span>Use Knowledge Base (docs)</span>
+                          <button
+                            type="button"
+                            onClick={() => setUseKnowledgeBase((v) => !v)}
+                            className={`relative inline-flex h-5 w-9 items-center rounded-full border border-white/15 transition ${
+                              useKnowledgeBase ? "bg-[#22c55e]" : "bg-black/40"
+                            }`}
+                          >
+                            <span
+                              className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition ${
+                                useKnowledgeBase ? "translate-x-4" : "translate-x-0.5"
+                              }`}
+                            />
+                          </button>
+                        </label>
+
+                        <label className="flex items-center justify-between gap-4">
+                          <span>Allow proactive replies</span>
+                          <button
+                            type="button"
+                            onClick={() => setAllowProactiveReplies((v) => !v)}
+                            className={`relative inline-flex h-5 w-9 items-center rounded-full border border-white/15 transition ${
+                              allowProactiveReplies ? "bg-[#facc15]" : "bg-black/40"
+                            }`}
+                          >
+                            <span
+                              className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition ${
+                                allowProactiveReplies ? "translate-x-4" : "translate-x-0.5"
+                              }`}
+                            />
+                          </button>
+                        </label>
+
+                        <label className="flex items-center justify-between gap-4">
+                          <span>Allow fun / playful replies</span>
+                          <button
+                            type="button"
+                            onClick={() => setAllowFunReplies((v) => !v)}
+                            className={`relative inline-flex h-5 w-9 items-center rounded-full border border-white/15 transition ${
+                              allowFunReplies ? "bg-[#a855f7]" : "bg-black/40"
+                            }`}
+                          >
+                            <span
+                              className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition ${
+                                allowFunReplies ? "translate-x-4" : "translate-x-0.5"
+                              }`}
+                            />
+                          </button>
+                        </label>
+                      </div>
+                    </div>
+
+                    <div className="flex justify-end gap-3 mt-5">
                       <button className="text-xs px-4 py-2 rounded-full bg-white/5 hover:bg-white/10 border border-white/20">
                         Reset to Default
                       </button>
                       <button 
-                        onClick={handleSavePrompt}
+                        onClick={handleSaveSettings}
                         disabled={savingPrompt || !selectedServerId || loadingPrompt}
                         className="text-xs px-5 py-2 rounded-full bg-[#5865F2] hover:bg-[#6b74ff] disabled:opacity-50 shadow-[0_0_18px_rgba(88,101,242,0.7)] transition"
                       >
-                        {savingPrompt ? "Saving..." : "Save"}
+                        {savingPrompt ? "Saving..." : "Save settings"}
                       </button>
                     </div>
                   </>

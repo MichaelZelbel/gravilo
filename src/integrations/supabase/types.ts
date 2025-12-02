@@ -16,27 +16,39 @@ export type Database = {
     Tables: {
       server_settings: {
         Row: {
+          allow_fun_replies: boolean | null
+          allow_proactive_replies: boolean | null
+          behavior_mode: string | null
           created_at: string | null
           custom_personality_prompt: string | null
           id: string
           server_id: string
           updated_at: string | null
+          use_knowledge_base: boolean | null
           user_id: string
         }
         Insert: {
+          allow_fun_replies?: boolean | null
+          allow_proactive_replies?: boolean | null
+          behavior_mode?: string | null
           created_at?: string | null
           custom_personality_prompt?: string | null
           id?: string
           server_id: string
           updated_at?: string | null
+          use_knowledge_base?: boolean | null
           user_id: string
         }
         Update: {
+          allow_fun_replies?: boolean | null
+          allow_proactive_replies?: boolean | null
+          behavior_mode?: string | null
           created_at?: string | null
           custom_personality_prompt?: string | null
           id?: string
           server_id?: string
           updated_at?: string | null
+          use_knowledge_base?: boolean | null
           user_id?: string
         }
         Relationships: [

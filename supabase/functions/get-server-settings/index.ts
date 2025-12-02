@@ -49,10 +49,10 @@ serve(async (req) => {
       });
     }
 
-    // Fetch settings for this server
+    // Fetch settings for this server including behavior flags
     const { data, error } = await supabase
       .from("server_settings")
-      .select("custom_personality_prompt")
+      .select("custom_personality_prompt, behavior_mode, use_knowledge_base, allow_proactive_replies, allow_fun_replies")
       .eq("server_id", serverId)
       .maybeSingle();
 

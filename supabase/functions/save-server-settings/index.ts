@@ -39,7 +39,14 @@ serve(async (req) => {
     }
 
     const body = await req.json();
-    const { server_id, custom_personality_prompt } = body;
+    const {
+      server_id,
+      custom_personality_prompt,
+      behavior_mode,
+      use_knowledge_base,
+      allow_proactive_replies,
+      allow_fun_replies,
+    } = body;
 
     if (!server_id) {
       return new Response(JSON.stringify({ error: "Missing server_id" }), {
@@ -48,7 +55,9 @@ serve(async (req) => {
       });
     }
 
-    // Upsert settings
+    const now = new Date().toISOString();
+
+    // Upsert settings with behavior flags
     const { data, error } = await supabase
       .from("server_settings")
       .upsert(
@@ -56,7 +65,11 @@ serve(async (req) => {
           server_id,
           user_id: user.id,
           custom_personality_prompt: custom_personality_prompt ?? null,
-          updated_at: new Date().toISOString(),
+          behavior_mode: behavior_mode ?? "quiet",
+          use_knowledge_base: typeof use_knowledge_base === "boolean" ? use_knowledge_base : true,
+          allow_proactive_replies: typeof allow_proactive_replies === "boolean" ? allow_proactive_replies : false,
+          allow_fun_replies: typeof allow_fun_replies === "boolean" ? allow_fun_replies : true,
+          updated_at: now,
         },
         { onConflict: "server_id" }
       )
