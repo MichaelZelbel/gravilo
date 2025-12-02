@@ -19,6 +19,18 @@ serve(async (req) => {
     });
   }
 
+  // Verify bot secret for authentication
+  const botSecret = req.headers.get("x-bot-secret");
+  const expectedSecret = Deno.env.get("DISCORD_BOT_SYNC_SECRET");
+
+  if (!expectedSecret || botSecret !== expectedSecret) {
+    console.error("Unauthorized request: invalid or missing x-bot-secret");
+    return new Response(JSON.stringify({ error: "Unauthorized" }), {
+      status: 401,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+
   const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
   const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
   const supabase = createClient(supabaseUrl, supabaseKey);
