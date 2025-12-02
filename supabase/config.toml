@@ -1,5 +1,8 @@
 project_id = "sohyviltwgpuslbjzqzh"
 
+[functions.discord-server-disconnected]
+verify_jwt = false
+
 [functions.discord-guild-sync]
 verify_jwt = false  # Public endpoint - called by Discord bot
 

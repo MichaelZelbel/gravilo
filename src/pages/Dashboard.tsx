@@ -11,6 +11,7 @@ type Server = {
   bot_nickname: string;
   cycle_start: string;
   cycle_end: string;
+  active: boolean;
 };
 
 type ServerOverview = {
@@ -91,10 +92,16 @@ const Dashboard = () => {
 
       setSession(session);
 
-      // Fetch or create user row
+      // Get Discord user ID from auth metadata
+      const discordUserId =
+        session.user.user_metadata?.provider_id ||
+        session.user.user_metadata?.sub ||
+        null;
+
+      // Fetch or create user row with discord_user_id
       const { data: userRow, error: userError } = await supabase
         .from("users")
-        .select("id, plan")
+        .select("id, plan, discord_user_id")
         .eq("id", session.user.id)
         .maybeSingle();
 
@@ -108,22 +115,35 @@ const Dashboard = () => {
           .insert({
             id: session.user.id,
             email: session.user.email,
+            discord_user_id: discordUserId,
             plan: "free",
           })
-          .select("id, plan")
+          .select("id, plan, discord_user_id")
           .single();
 
         if (newUserError) {
           console.error("Error creating user row", newUserError);
         }
+      } else if (discordUserId && userRow.discord_user_id !== discordUserId) {
+        // Update discord_user_id if it changed or was missing
+        await supabase
+          .from("users")
+          .update({ discord_user_id: discordUserId })
+          .eq("id", session.user.id);
       }
 
-      // Fetch servers owned by this user
-      const { data: serversData, error: serversError } = await supabase
+      // Get the user's discord_user_id for server filtering
+      const userDiscordId = userRow?.discord_user_id || discordUserId;
+
+      // Fetch servers owned by this user (either by owner_id or matching discord_user_id)
+      let serversQuery = supabase
         .from("servers")
         .select("id, name, icon_url, discord_guild_id, bot_nickname, message_usage_current_cycle, message_limit, cycle_start, cycle_end, active")
         .eq("owner_id", session.user.id)
+        .order("active", { ascending: false })
         .order("name", { ascending: true });
+
+      const { data: serversData, error: serversError } = await serversQuery;
 
       if (serversError) {
         console.error("Error loading servers", serversError);
@@ -388,7 +408,7 @@ const Dashboard = () => {
                 )}
                 {servers.map((srv) => (
                   <option key={srv.id} value={srv.id}>
-                    {srv.name || "Unnamed server"}
+                    {srv.name || "Unnamed server"} {srv.active ? "" : "(Bot removed)"}
                   </option>
                 ))}
               </select>
@@ -458,10 +478,33 @@ const Dashboard = () => {
                   {serverOverview.server.name.charAt(0).toUpperCase()}
                 </div>
               )}
-              <div>
-                <h1 className="text-xl font-semibold">{serverOverview.server.name}</h1>
+              <div className="flex-1">
+                <div className="flex items-center gap-2">
+                  <h1 className="text-xl font-semibold">{serverOverview.server.name}</h1>
+                  {serverOverview.server.active ? (
+                    <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/20 px-2 py-0.5 text-xs text-emerald-400 border border-emerald-500/30">
+                      <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+                      Connected
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1 rounded-full bg-gray-500/20 px-2 py-0.5 text-xs text-gray-400 border border-gray-500/30">
+                      <span className="h-1.5 w-1.5 rounded-full bg-gray-400" />
+                      Bot removed
+                    </span>
+                  )}
+                </div>
                 <p className="text-xs text-gray-400">Bot: {serverOverview.server.bot_nickname}</p>
               </div>
+              {!serverOverview.server.active && (
+                <a
+                  href="https://discord.com/api/oauth2/authorize?client_id=1442892578264715385&permissions=534723947584&scope=bot"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-xs px-3 py-1.5 rounded-full bg-[#5865F2] hover:bg-[#6b74ff] transition flex items-center gap-1.5"
+                >
+                  Reinvite Bot
+                </a>
+              )}
             </div>
           )}
 

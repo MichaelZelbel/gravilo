@@ -20,7 +20,10 @@
  *       "https://sohyviltwgpuslbjzqzh.supabase.co/functions/v1/discord-guild-sync",
  *       {
  *         method: "POST",
- *         headers: { "Content-Type": "application/json" },
+ *         headers: { 
+ *           "Content-Type": "application/json",
+ *           "x-bot-secret": process.env.DISCORD_BOT_SYNC_SECRET,
+ *         },
  *         body: JSON.stringify({
  *           discord_guild_id: guild.id,
  *           discord_owner_id: guild.ownerId,
@@ -50,7 +53,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-bot-secret',
 };
 
 serve(async (req) => {
@@ -70,14 +73,29 @@ serve(async (req) => {
     );
   }
 
-  console.log("Discord Guild Sync: Request received");
+  console.log("[DISCORD-GUILD-SYNC] Request received");
+
+  // Verify bot secret
+  const botSecret = req.headers.get("x-bot-secret");
+  const expectedSecret = Deno.env.get("DISCORD_BOT_SYNC_SECRET");
+
+  if (!expectedSecret || botSecret !== expectedSecret) {
+    console.error("[DISCORD-GUILD-SYNC] Invalid or missing bot secret");
+    return new Response(
+      JSON.stringify({ error: "Unauthorized" }),
+      {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      }
+    );
+  }
 
   // Initialize Supabase client with service role key for admin access
   const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
   const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
   
   if (!supabaseUrl || !supabaseKey) {
-    console.error("Missing Supabase environment variables");
+    console.error("[DISCORD-GUILD-SYNC] Missing Supabase environment variables");
     return new Response(
       JSON.stringify({ error: "Server configuration error" }),
       {
@@ -94,7 +112,7 @@ serve(async (req) => {
   try {
     body = await req.json();
   } catch (error) {
-    console.error("Invalid JSON body:", error);
+    console.error("[DISCORD-GUILD-SYNC] Invalid JSON body:", error);
     return new Response(
       JSON.stringify({ error: "Invalid JSON body" }),
       {
@@ -107,12 +125,12 @@ serve(async (req) => {
   // Validate required fields
   const { discord_guild_id, discord_owner_id, name, icon_url, message_limit } = body;
 
-  if (!discord_guild_id || !discord_owner_id || !name) {
-    console.error("Missing required fields:", { discord_guild_id, discord_owner_id, name });
+  if (!discord_guild_id || !name) {
+    console.error("[DISCORD-GUILD-SYNC] Missing required fields:", { discord_guild_id, name });
     return new Response(
       JSON.stringify({ 
         error: "Missing required fields",
-        required: ["discord_guild_id", "discord_owner_id", "name"]
+        required: ["discord_guild_id", "name"]
       }),
       {
         status: 400,
@@ -121,31 +139,47 @@ serve(async (req) => {
     );
   }
 
-  console.log("Syncing guild:", { discord_guild_id, discord_owner_id, name });
+  console.log("[DISCORD-GUILD-SYNC] Syncing guild:", { discord_guild_id, discord_owner_id, name });
 
-  // Step 1: Find or create user based on discord_owner_id
-  const { data: existingUser, error: userSelectError } = await supabase
-    .from("users")
-    .select("id, discord_user_id, plan")
-    .eq("discord_user_id", discord_owner_id)
-    .maybeSingle();
+  // Step 1: Find user based on discord_owner_id (if provided)
+  let ownerId: string | null = null;
 
-  if (userSelectError) {
-    console.error("User lookup error:", userSelectError);
-    return new Response(
-      JSON.stringify({ error: "User lookup failed", details: userSelectError.message }),
-      {
-        status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      }
-    );
+  if (discord_owner_id) {
+    const { data: existingUser, error: userSelectError } = await supabase
+      .from("users")
+      .select("id, discord_user_id, plan")
+      .eq("discord_user_id", discord_owner_id)
+      .maybeSingle();
+
+    if (userSelectError) {
+      console.error("[DISCORD-GUILD-SYNC] User lookup error:", userSelectError);
+    } else if (existingUser) {
+      ownerId = existingUser.id;
+      console.log("[DISCORD-GUILD-SYNC] Found existing user with id:", ownerId);
+    } else {
+      console.log("[DISCORD-GUILD-SYNC] No user found for discord_owner_id:", discord_owner_id);
+    }
   }
 
-  let userId = existingUser?.id;
+  // Step 2: Check if server already exists
+  const { data: existingServer, error: serverSelectError } = await supabase
+    .from("servers")
+    .select("id, owner_id")
+    .eq("discord_guild_id", discord_guild_id)
+    .maybeSingle();
 
-  // Create user if doesn't exist
-  if (!userId) {
-    console.log("Creating new user for discord_owner_id:", discord_owner_id);
+  if (serverSelectError) {
+    console.error("[DISCORD-GUILD-SYNC] Server lookup error:", serverSelectError);
+  }
+
+  // Use existing owner_id if server exists and we didn't find a new owner
+  if (existingServer && !ownerId) {
+    ownerId = existingServer.owner_id;
+  }
+
+  // If still no owner, we need to create a placeholder user or skip owner assignment
+  if (!ownerId && discord_owner_id) {
+    console.log("[DISCORD-GUILD-SYNC] Creating placeholder user for discord_owner_id:", discord_owner_id);
     
     const { data: newUser, error: userInsertError } = await supabase
       .from("users")
@@ -157,46 +191,49 @@ serve(async (req) => {
       .single();
 
     if (userInsertError || !newUser) {
-      console.error("User creation error:", userInsertError);
-      return new Response(
-        JSON.stringify({ error: "Failed to create user", details: userInsertError?.message }),
-        {
-          status: 500,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        }
-      );
+      console.error("[DISCORD-GUILD-SYNC] User creation error:", userInsertError);
+    } else {
+      ownerId = newUser.id;
+      console.log("[DISCORD-GUILD-SYNC] Created user with id:", ownerId);
     }
-
-    userId = newUser.id;
-    console.log("Created user with id:", userId);
-  } else {
-    console.log("Found existing user with id:", userId);
   }
 
-  // Step 2: Upsert server data
-  console.log("Upserting server for guild:", discord_guild_id);
+  if (!ownerId) {
+    console.error("[DISCORD-GUILD-SYNC] Unable to determine owner for server");
+    return new Response(
+      JSON.stringify({ error: "Unable to determine server owner" }),
+      {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      }
+    );
+  }
+
+  // Step 3: Upsert server data
+  console.log("[DISCORD-GUILD-SYNC] Upserting server for guild:", discord_guild_id);
 
   const { data: serverRow, error: serverError } = await supabase
     .from("servers")
     .upsert(
       {
         discord_guild_id,
-        owner_id: userId,
+        owner_id: ownerId,
         name,
         icon_url: icon_url ?? null,
         message_limit: message_limit ?? 3000,
         active: true,
+        updated_at: new Date().toISOString(),
       },
       { 
         onConflict: "discord_guild_id",
-        ignoreDuplicates: false // Always update on conflict
+        ignoreDuplicates: false
       }
     )
     .select("id, name, message_limit, active")
     .single();
 
   if (serverError || !serverRow) {
-    console.error("Server upsert error:", serverError);
+    console.error("[DISCORD-GUILD-SYNC] Server upsert error:", serverError);
     return new Response(
       JSON.stringify({ error: "Failed to upsert server", details: serverError?.message }),
       {
@@ -206,12 +243,12 @@ serve(async (req) => {
     );
   }
 
-  console.log("Server synced successfully:", serverRow.id);
+  console.log("[DISCORD-GUILD-SYNC] Server synced successfully:", serverRow.id);
 
   // Return success response
   return new Response(
     JSON.stringify({
-      status: "ok",
+      success: true,
       server_id: serverRow.id,
       message: "Server synced successfully",
       data: {
