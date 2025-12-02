@@ -14,6 +14,36 @@ export type Database = {
   }
   public: {
     Tables: {
+      server_kb_files: {
+        Row: {
+          created_at: string | null
+          discord_server_id: string
+          file_name: string
+          file_path: string
+          file_size: number | null
+          id: string
+          status: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          discord_server_id: string
+          file_name: string
+          file_path: string
+          file_size?: number | null
+          id?: string
+          status?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          discord_server_id?: string
+          file_name?: string
+          file_path?: string
+          file_size?: number | null
+          id?: string
+          status?: string | null
+        }
+        Relationships: []
+      }
       server_plans: {
         Row: {
           created_at: string | null

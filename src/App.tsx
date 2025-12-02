@@ -17,6 +17,7 @@ import Usage from "./pages/Usage";
 import BillingSuccess from "./pages/BillingSuccess";
 import Admin from "./pages/Admin";
 import ServerSettings from "./pages/ServerSettings";
+import KnowledgeBase from "./pages/KnowledgeBase";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -53,6 +54,7 @@ const App = () => {
             <Route path="/billing/success" element={<BillingSuccess />} />
             <Route path="/admin" element={<Admin />} />
             <Route path="/settings" element={<ServerSettings />} />
+            <Route path="/knowledge-base" element={<KnowledgeBase />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
