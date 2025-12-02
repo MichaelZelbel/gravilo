@@ -151,6 +151,7 @@ export type Database = {
           message_limit: number | null
           message_usage_current_cycle: number | null
           name: string
+          owner_discord_id: string | null
           owner_id: string
           updated_at: string | null
         }
@@ -166,6 +167,7 @@ export type Database = {
           message_limit?: number | null
           message_usage_current_cycle?: number | null
           name: string
+          owner_discord_id?: string | null
           owner_id: string
           updated_at?: string | null
         }
@@ -181,6 +183,7 @@ export type Database = {
           message_limit?: number | null
           message_usage_current_cycle?: number | null
           name?: string
+          owner_discord_id?: string | null
           owner_id?: string
           updated_at?: string | null
         }
@@ -212,6 +215,27 @@ export type Database = {
           id?: string
           role?: Database["public"]["Enums"]["app_role"]
           user_id?: string
+        }
+        Relationships: []
+      }
+      user_servers: {
+        Row: {
+          created_at: string | null
+          discord_server_id: string
+          discord_user_id: string
+          id: string
+        }
+        Insert: {
+          created_at?: string | null
+          discord_server_id: string
+          discord_user_id: string
+          id?: string
+        }
+        Update: {
+          created_at?: string | null
+          discord_server_id?: string
+          discord_user_id?: string
+          id?: string
         }
         Relationships: []
       }

@@ -218,6 +218,7 @@ serve(async (req) => {
       {
         discord_guild_id,
         owner_id: ownerId,
+        owner_discord_id: discord_owner_id ?? null,
         name,
         icon_url: icon_url ?? null,
         message_limit: message_limit ?? 3000,
@@ -244,6 +245,31 @@ serve(async (req) => {
   }
 
   console.log("[DISCORD-GUILD-SYNC] Server synced successfully:", serverRow.id);
+
+  // Step 4: Upsert user_servers mapping if we have discord_owner_id
+  if (discord_owner_id) {
+    console.log("[DISCORD-GUILD-SYNC] Creating user_servers mapping for:", discord_owner_id);
+    
+    const { error: userServersError } = await supabase
+      .from("user_servers")
+      .upsert(
+        {
+          discord_user_id: discord_owner_id,
+          discord_server_id: discord_guild_id,
+        },
+        {
+          onConflict: "discord_user_id,discord_server_id",
+          ignoreDuplicates: true
+        }
+      );
+
+    if (userServersError) {
+      console.error("[DISCORD-GUILD-SYNC] user_servers upsert error:", userServersError);
+      // Non-fatal error, continue
+    } else {
+      console.log("[DISCORD-GUILD-SYNC] user_servers mapping created successfully");
+    }
+  }
 
   // Return success response
   return new Response(
