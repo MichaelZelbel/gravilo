@@ -17,6 +17,7 @@ const Dashboard = () => {
   const [servers, setServers] = useState<Server[]>([]);
   const [selectedServerId, setSelectedServerId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [userPlan, setUserPlan] = useState<"free" | "premium" | null>(null);
 
   useEffect(() => {
     const init = async () => {
@@ -40,7 +41,7 @@ const Dashboard = () => {
       // Fetch or create user row
       const { data: userRow, error: userError } = await supabase
         .from("users")
-        .select("id")
+        .select("id, plan")
         .eq("id", session.user.id)
         .maybeSingle();
 
@@ -50,11 +51,23 @@ const Dashboard = () => {
 
       if (!userRow) {
         // Auto-create user row if missing
-        await supabase.from("users").insert({
-          id: session.user.id,
-          email: session.user.email,
-          plan: "free",
-        });
+        const { data: newUser, error: newUserError } = await supabase
+          .from("users")
+          .insert({
+            id: session.user.id,
+            email: session.user.email,
+            plan: "free",
+          })
+          .select("id, plan")
+          .single();
+
+        if (newUserError) {
+          console.error("Error creating user row", newUserError);
+        } else {
+          setUserPlan(newUser?.plan as "free" | "premium");
+        }
+      } else {
+        setUserPlan(userRow.plan as "free" | "premium");
       }
 
       // Fetch servers owned by this user
@@ -189,10 +202,18 @@ const Dashboard = () => {
 
             {/* Right: Premium + user + logout */}
             <div className="flex items-center gap-3">
-              <span className="hidden sm:inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-[#5865F2] to-[#9B5FFF] px-3 py-1 text-xs font-semibold shadow-[0_0_20px_rgba(88,101,242,0.8)]">
-                <span className="h-2 w-2 rounded-full bg-emerald-300" />
-                Premium
-              </span>
+              {userPlan === "premium" && (
+                <span className="hidden sm:inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-[#5865F2] to-[#9B5FFF] px-3 py-1 text-xs font-semibold shadow-[0_0_20px_rgba(88,101,242,0.8)]">
+                  <span className="h-2 w-2 rounded-full bg-emerald-300" />
+                  Premium
+                </span>
+              )}
+
+              {userPlan === "free" && (
+                <span className="hidden sm:inline-flex items-center gap-1 rounded-full bg-white/5 px-3 py-1 text-xs font-semibold border border-white/20 text-gray-200">
+                  Free plan
+                </span>
+              )}
 
               <div className="hidden sm:flex items-center gap-2 bg-white/5 rounded-full px-3 py-1 border border-white/10">
                 <div className="h-7 w-7 rounded-full bg-[#222741] flex items-center justify-center text-xs font-semibold">
@@ -284,7 +305,7 @@ const Dashboard = () => {
             {/* Row 2: Personality + Knowledge */}
             <section className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {/* Personality Studio */}
-              <div className="backdrop-blur-2xl bg-white/5 border border-white/10 rounded-3xl p-6 md:p-7 shadow-[0_0_40px_rgba(0,0,0,0.75)]">
+              <div className="relative backdrop-blur-2xl bg-white/5 border border-white/10 rounded-3xl p-6 md:p-7 shadow-[0_0_40px_rgba(0,0,0,0.75)]">
                 <div className="flex items-center justify-between mb-4">
                   <h2 className="text-lg font-semibold">Personality Studio</h2>
                   <span className="text-xs rounded-full bg-[#2b184b] px-3 py-1 border border-[#A855F7]/50 text-[#E9D5FF]">
@@ -292,47 +313,90 @@ const Dashboard = () => {
                   </span>
                 </div>
 
-                {/* Preset grid */}
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-5">
-                  {[
-                    { label: "Helpful Assistant", desc: "Friendly & helpful tone" },
-                    { label: "Sarcastic Droid", desc: "Dry humor & sarcasm" },
-                    { label: "Wise Wizard", desc: "Calm & wise answers" },
-                    { label: "Gen Z Gamer", desc: "Hype, slang, and memes" }
-                  ].map((preset, idx) => (
-                    <button
-                      key={preset.label}
-                      className={`rounded-2xl px-3 py-3 text-xs text-left bg-white/5 border ${
-                        idx === 3 ? "border-[#3BFFB6]/60 shadow-[0_0_20px_rgba(59,255,182,0.5)]" : "border-white/10"
-                      } hover:bg-white/10 transition`}
-                    >
-                      <div className="mb-1 font-semibold">{preset.label}</div>
-                      <div className="text-[10px] text-gray-400">{preset.desc}</div>
-                    </button>
-                  ))}
-                </div>
+                {userPlan === "premium" ? (
+                  <>
+                    {/* Preset grid */}
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-5">
+                      {[
+                        { label: "Helpful Assistant", desc: "Friendly & helpful tone" },
+                        { label: "Sarcastic Droid", desc: "Dry humor & sarcasm" },
+                        { label: "Wise Wizard", desc: "Calm & wise answers" },
+                        { label: "Gen Z Gamer", desc: "Hype, slang, and memes" }
+                      ].map((preset, idx) => (
+                        <button
+                          key={preset.label}
+                          className={`rounded-2xl px-3 py-3 text-xs text-left bg-white/5 border ${
+                            idx === 3 ? "border-[#3BFFB6]/60 shadow-[0_0_20px_rgba(59,255,182,0.5)]" : "border-white/10"
+                          } hover:bg-white/10 transition`}
+                        >
+                          <div className="mb-1 font-semibold">{preset.label}</div>
+                          <div className="text-[10px] text-gray-400">{preset.desc}</div>
+                        </button>
+                      ))}
+                    </div>
 
-                {/* Custom prompt */}
-                <div className="space-y-2">
-                  <label className="text-xs text-gray-300">Custom Personality Prompt</label>
-                  <textarea
-                    className="w-full h-28 bg-black/30 border border-white/15 rounded-2xl px-3 py-3 text-xs text-gray-100 resize-none"
-                    placeholder="You are Gravilo, a nerdy developer buddy for the Antigravity community. Use slang and gaming references."
-                  />
-                </div>
+                    {/* Custom prompt */}
+                    <div className="space-y-2">
+                      <label className="text-xs text-gray-300">Custom Personality Prompt</label>
+                      <textarea
+                        className="w-full h-28 bg-black/30 border border-white/15 rounded-2xl px-3 py-3 text-xs text-gray-100 resize-none"
+                        placeholder="You are Gravilo, a nerdy developer buddy for the Antigravity community. Use slang and gaming references."
+                      />
+                    </div>
 
-                <div className="flex justify-end gap-3 mt-4">
-                  <button className="text-xs px-4 py-2 rounded-full bg-white/5 hover:bg-white/10 border border-white/20">
-                    Reset to Default
-                  </button>
-                  <button className="text-xs px-5 py-2 rounded-full bg-[#5865F2] hover:bg-[#6b74ff] shadow-[0_0_18px_rgba(88,101,242,0.7)]">
-                    Save
-                  </button>
-                </div>
+                    <div className="flex justify-end gap-3 mt-4">
+                      <button className="text-xs px-4 py-2 rounded-full bg-white/5 hover:bg-white/10 border border-white/20">
+                        Reset to Default
+                      </button>
+                      <button className="text-xs px-5 py-2 rounded-full bg-[#5865F2] hover:bg-[#6b74ff] shadow-[0_0_18px_rgba(88,101,242,0.7)]">
+                        Save
+                      </button>
+                    </div>
+                  </>
+                ) : (
+                  <div className="relative">
+                    <div className="opacity-40 pointer-events-none">
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-5">
+                        {[
+                          { label: "Helpful Assistant", desc: "Friendly & helpful tone" },
+                          { label: "Sarcastic Droid", desc: "Dry humor & sarcasm" },
+                          { label: "Wise Wizard", desc: "Calm & wise answers" },
+                          { label: "Gen Z Gamer", desc: "Hype, slang, and memes" }
+                        ].map((preset) => (
+                          <div
+                            key={preset.label}
+                            className="rounded-2xl px-3 py-3 text-xs text-left bg-white/5 border border-white/10"
+                          >
+                            <div className="mb-1 font-semibold">{preset.label}</div>
+                            <div className="text-[10px] text-gray-400">{preset.desc}</div>
+                          </div>
+                        ))}
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-xs text-gray-300">Custom Personality Prompt</label>
+                        <textarea
+                          className="w-full h-28 bg-black/30 border border-white/15 rounded-2xl px-3 py-3 text-xs text-gray-100 resize-none"
+                          disabled
+                        />
+                      </div>
+                    </div>
+                    <div className="absolute inset-0 flex flex-col items-center justify-center text-center px-6 backdrop-blur-sm bg-black/20 rounded-3xl">
+                      <p className="text-sm text-gray-200 mb-3">
+                        Unlock custom personalities and advanced presets with the Premium plan.
+                      </p>
+                      <button
+                        onClick={() => (window.location.href = "/usage")}
+                        className="px-6 py-3 rounded-full bg-[#5865F2] hover:bg-[#6b74ff] shadow-[0_0_20px_rgba(88,101,242,0.7)] text-xs font-semibold"
+                      >
+                        Upgrade to Premium
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Knowledge Base */}
-              <div className="backdrop-blur-2xl bg-white/5 border border-white/10 rounded-3xl p-6 md:p-7 shadow-[0_0_40px_rgba(0,0,0,0.75)]">
+              <div className="relative backdrop-blur-2xl bg-white/5 border border-white/10 rounded-3xl p-6 md:p-7 shadow-[0_0_40px_rgba(0,0,0,0.75)]">
                 <div className="flex items-center justify-between mb-4">
                   <h2 className="text-lg font-semibold">Knowledge Base</h2>
                   <span className="text-xs rounded-full bg-[#2b184b] px-3 py-1 border border-[#A855F7]/50 text-[#E9D5FF]">
@@ -340,36 +404,68 @@ const Dashboard = () => {
                   </span>
                 </div>
 
-                <button className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[#3BFFB6]/10 border border-[#3BFFB6]/60 text-xs text-emerald-200 hover:bg-[#3BFFB6]/20 transition mb-4">
-                  Upload File
-                </button>
-                <p className="text-[11px] text-gray-400 mb-4">PDF, TXT, Markdown, or HTML. Max 5MB.</p>
+                {userPlan === "premium" ? (
+                  <>
+                    <button className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[#3BFFB6]/10 border border-[#3BFFB6]/60 text-xs text-emerald-200 hover:bg-[#3BFFB6]/20 transition mb-4">
+                      Upload File
+                    </button>
+                    <p className="text-[11px] text-gray-400 mb-4">PDF, TXT, Markdown, or HTML. Max 5MB.</p>
 
-                <div className="space-y-2 text-xs">
-                  <div className="flex items-center justify-between bg-black/30 border border-white/10 rounded-2xl px-3 py-2">
-                    <div className="flex items-center gap-2">
-                      <span className="inline-flex items-center justify-center h-6 w-6 rounded-md bg-red-500/20 text-[10px]">PDF</span>
-                      <span>Antigravity_Docs.pdf</span>
-                    </div>
-                    <span className="text-amber-300">Indexing…</span>
-                  </div>
+                    <div className="space-y-2 text-xs">
+                      <div className="flex items-center justify-between bg-black/30 border border-white/10 rounded-2xl px-3 py-2">
+                        <div className="flex items-center gap-2">
+                          <span className="inline-flex items-center justify-center h-6 w-6 rounded-md bg-red-500/20 text-[10px]">PDF</span>
+                          <span>Antigravity_Docs.pdf</span>
+                        </div>
+                        <span className="text-amber-300">Indexing…</span>
+                      </div>
 
-                  <div className="flex items-center justify-between bg-black/30 border border-white/10 rounded-2xl px-3 py-2">
-                    <div className="flex items-center gap-2">
-                      <span className="inline-flex items-center justify-center h-6 w-6 rounded-md bg-sky-500/20 text-[10px]">MD</span>
-                      <span>Docker_Guide.md</span>
-                    </div>
-                    <span className="text-emerald-300">Ready</span>
-                  </div>
+                      <div className="flex items-center justify-between bg-black/30 border border-white/10 rounded-2xl px-3 py-2">
+                        <div className="flex items-center gap-2">
+                          <span className="inline-flex items-center justify-center h-6 w-6 rounded-md bg-sky-500/20 text-[10px]">MD</span>
+                          <span>Docker_Guide.md</span>
+                        </div>
+                        <span className="text-emerald-300">Ready</span>
+                      </div>
 
-                  <div className="flex items-center justify-between bg-black/30 border border-white/10 rounded-2xl px-3 py-2">
-                    <div className="flex items-center gap-2">
-                      <span className="inline-flex items-center justify-center h-6 w-6 rounded-md bg-lime-500/20 text-[10px]">TXT</span>
-                      <span>Server_Rules.txt</span>
+                      <div className="flex items-center justify-between bg-black/30 border border-white/10 rounded-2xl px-3 py-2">
+                        <div className="flex items-center gap-2">
+                          <span className="inline-flex items-center justify-center h-6 w-6 rounded-md bg-lime-500/20 text-[10px]">TXT</span>
+                          <span>Server_Rules.txt</span>
+                        </div>
+                        <span className="text-emerald-300">Ready</span>
+                      </div>
                     </div>
-                    <span className="text-emerald-300">Ready</span>
+                  </>
+                ) : (
+                  <div className="relative">
+                    <div className="opacity-40 pointer-events-none">
+                      <button className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[#3BFFB6]/10 border border-[#3BFFB6]/60 text-xs text-emerald-200 mb-4">
+                        Upload File
+                      </button>
+                      <p className="text-[11px] text-gray-400 mb-4">PDF, TXT, Markdown, or HTML. Max 5MB.</p>
+                      <div className="space-y-2 text-xs">
+                        <div className="flex items-center justify-between bg-black/30 border border-white/10 rounded-2xl px-3 py-2">
+                          <div className="flex items-center gap-2">
+                            <span className="inline-flex items-center justify-center h-6 w-6 rounded-md bg-red-500/20 text-[10px]">PDF</span>
+                            <span>Example_Doc.pdf</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="absolute inset-0 flex flex-col items-center justify-center text-center px-6 backdrop-blur-sm bg-black/20 rounded-3xl">
+                      <p className="text-sm text-gray-200 mb-3">
+                        Upload custom knowledge files and documentation with the Premium plan.
+                      </p>
+                      <button
+                        onClick={() => (window.location.href = "/usage")}
+                        className="px-6 py-3 rounded-full bg-[#5865F2] hover:bg-[#6b74ff] shadow-[0_0_20px_rgba(88,101,242,0.7)] text-xs font-semibold"
+                      >
+                        Upgrade to Premium
+                      </button>
+                    </div>
                   </div>
-                </div>
+                )}
               </div>
             </section>
           </main>

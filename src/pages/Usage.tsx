@@ -3,11 +3,15 @@ import { supabase } from "@/integrations/supabase/client";
 
 const Usage = () => {
   const [session, setSession] = useState<any>(null);
+  const [userPlan, setUserPlan] = useState<"free" | "premium" | null>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const checkSession = async () => {
+    const init = async () => {
       // Automatically bypass auth check in development/preview mode
       if (import.meta.env.DEV) {
+        setUserPlan("free");
+        setLoading(false);
         return;
       }
 
@@ -17,12 +21,46 @@ const Usage = () => {
 
       if (!session) {
         window.location.href = "/";
-      } else {
-        setSession(session);
+        return;
       }
+
+      setSession(session);
+
+      // Load user row
+      const { data: userRow, error: userError } = await supabase
+        .from("users")
+        .select("id, plan")
+        .eq("id", session.user.id)
+        .maybeSingle();
+
+      if (userError) {
+        console.error("Error loading user row", userError);
+      }
+
+      if (!userRow) {
+        const { data: newUser, error: newUserError } = await supabase
+          .from("users")
+          .insert({
+            id: session.user.id,
+            email: session.user.email,
+            plan: "free",
+          })
+          .select("id, plan")
+          .single();
+
+        if (newUserError) {
+          console.error("Error creating user row", newUserError);
+        } else {
+          setUserPlan(newUser?.plan as "free" | "premium");
+        }
+      } else {
+        setUserPlan(userRow.plan as "free" | "premium");
+      }
+
+      setLoading(false);
     };
 
-    checkSession();
+    init();
   }, []);
 
   const handleLogout = async () => {
@@ -92,12 +130,27 @@ const Usage = () => {
               <div className="flex flex-col md:flex-row justify-between md:items-center">
                 <div>
                   <p className="text-gray-300 text-sm">Current Plan</p>
-                  <p className="text-xl font-semibold mt-1">Premium Plan</p>
+                  <p className="text-xl font-semibold mt-1 capitalize">
+                    {loading ? "Loading..." : userPlan === "premium" ? "Premium Plan" : "Free Plan"}
+                  </p>
                 </div>
 
-                <button className="mt-4 md:mt-0 bg-[#5865F2] hover:bg-[#6b74ff] px-6 py-3 rounded-full shadow-[0_0_20px_rgba(88,101,242,0.6)] transition">
-                  Manage Subscription
-                </button>
+                {!loading && userPlan === "free" && (
+                  <button
+                    className="mt-4 md:mt-0 bg-[#5865F2] hover:bg-[#6b74ff] px-6 py-3 rounded-full shadow-[0_0_20px_rgba(88,101,242,0.6)] transition"
+                    onClick={() => {
+                      alert("Upgrade flow coming soon – this will open Stripe Checkout.");
+                    }}
+                  >
+                    Upgrade to Premium
+                  </button>
+                )}
+
+                {!loading && userPlan === "premium" && (
+                  <button className="mt-4 md:mt-0 bg-white/10 hover:bg-white/20 px-6 py-3 rounded-full border border-white/30 transition text-sm">
+                    Manage Subscription
+                  </button>
+                )}
               </div>
             </div>
 
@@ -136,16 +189,23 @@ const Usage = () => {
             </div>
 
             {/* Upgrade to Premium CTA */}
-            <div className="backdrop-blur-xl bg-white/5 border border-white/10 rounded-2xl p-6 shadow-[0_0_25px_rgba(88,101,242,0.5)]">
-              <h2 className="text-xl font-semibold mb-3">Upgrade to Premium</h2>
-              <p className="text-gray-300 text-sm mb-4">
-                Unlock custom personality prompts, knowledge uploads, analytics, and 3,000 messages per month.
-              </p>
+            {!loading && userPlan === "free" && (
+              <div className="backdrop-blur-xl bg-white/5 border border-white/10 rounded-2xl p-6 shadow-[0_0_25px_rgba(88,101,242,0.5)]">
+                <h2 className="text-xl font-semibold mb-3">Upgrade to Premium</h2>
+                <p className="text-gray-300 text-sm mb-4">
+                  Unlock custom personality prompts, knowledge uploads, analytics, and 3,000 messages per month.
+                </p>
 
-              <button className="px-6 py-3 rounded-full bg-[#5865F2] hover:bg-[#6b74ff] shadow-[0_0_20px_rgba(88,101,242,0.7)] transition">
-                Upgrade Now
-              </button>
-            </div>
+                <button
+                  className="px-6 py-3 rounded-full bg-[#5865F2] hover:bg-[#6b74ff] shadow-[0_0_20px_rgba(88,101,242,0.7)] transition"
+                  onClick={() => {
+                    alert("Upgrade flow coming soon – this will open Stripe Checkout.");
+                  }}
+                >
+                  Upgrade Now
+                </button>
+              </div>
+            )}
 
             {/* Footer */}
             <div className="text-center text-gray-500 text-xs mt-10 pb-6">
