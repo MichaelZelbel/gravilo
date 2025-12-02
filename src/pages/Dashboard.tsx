@@ -92,6 +92,37 @@ const Dashboard = () => {
     init();
   }, []);
 
+  const handleUpgrade = async () => {
+    try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      if (!sessionData.session) {
+        window.location.href = "/";
+        return;
+      }
+
+      // Call create-checkout edge function
+      const { data, error } = await supabase.functions.invoke("create-checkout", {
+        headers: {
+          Authorization: `Bearer ${sessionData.session.access_token}`,
+        },
+      });
+
+      if (error) {
+        console.error("Error creating checkout:", error);
+        alert("Failed to create checkout session. Please try again.");
+        return;
+      }
+
+      if (data?.url) {
+        // Open checkout in new tab
+        window.open(data.url, "_blank");
+      }
+    } catch (err) {
+      console.error("Checkout error:", err);
+      alert("An error occurred. Please try again.");
+    }
+  };
+
   const handleLogout = async () => {
     await supabase.auth.signOut();
     window.location.href = "/";
@@ -385,7 +416,7 @@ const Dashboard = () => {
                         Unlock custom personalities and advanced presets with the Premium plan.
                       </p>
                       <button
-                        onClick={() => (window.location.href = "/usage")}
+                        onClick={handleUpgrade}
                         className="px-6 py-3 rounded-full bg-[#5865F2] hover:bg-[#6b74ff] shadow-[0_0_20px_rgba(88,101,242,0.7)] text-xs font-semibold"
                       >
                         Upgrade to Premium
@@ -458,7 +489,7 @@ const Dashboard = () => {
                         Upload custom knowledge files and documentation with the Premium plan.
                       </p>
                       <button
-                        onClick={() => (window.location.href = "/usage")}
+                        onClick={handleUpgrade}
                         className="px-6 py-3 rounded-full bg-[#5865F2] hover:bg-[#6b74ff] shadow-[0_0_20px_rgba(88,101,242,0.7)] text-xs font-semibold"
                       >
                         Upgrade to Premium

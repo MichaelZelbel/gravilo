@@ -5,3 +5,9 @@ verify_jwt = false  # Public endpoint - called by Discord bot
 
 [functions.discord-message-usage]
 verify_jwt = false  # Public endpoint - called by Discord bot
+
+[functions.create-checkout]
+# Requires authentication to create checkout session
+
+[functions.stripe-webhook]
+verify_jwt = false  # Public endpoint - verified by Stripe webhook signature
