@@ -14,6 +14,38 @@ export type Database = {
   }
   public: {
     Tables: {
+      server_plans: {
+        Row: {
+          created_at: string | null
+          id: string
+          plan: string
+          server_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          plan?: string
+          server_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          plan?: string
+          server_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "server_plans_server_id_fkey"
+            columns: ["server_id"]
+            isOneToOne: true
+            referencedRelation: "servers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       server_settings: {
         Row: {
           allow_fun_replies: boolean | null
