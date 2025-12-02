@@ -188,6 +188,11 @@ const Dashboard = () => {
   }, [selectedServerId, session]);
 
   const handleUpgrade = async () => {
+    if (!selectedServerId) {
+      alert("Please select a server first.");
+      return;
+    }
+
     try {
       const { data: sessionData } = await supabase.auth.getSession();
       if (!sessionData.session) {
@@ -195,18 +200,23 @@ const Dashboard = () => {
         return;
       }
 
-      const { data, error } = await supabase.functions.invoke("create-checkout", {
+      // Use server-specific checkout
+      const url = `https://sohyviltwgpuslbjzqzh.supabase.co/functions/v1/create-server-checkout?server_id=${selectedServerId}`;
+      const response = await fetch(url, {
+        method: "GET",
         headers: {
           Authorization: `Bearer ${sessionData.session.access_token}`,
         },
       });
 
-      if (error) {
-        console.error("Error creating checkout:", error);
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.error("Error creating checkout:", errorData);
         alert("Failed to create checkout session. Please try again.");
         return;
       }
 
+      const data = await response.json();
       if (data?.url) {
         window.open(data.url, "_blank");
       }
