@@ -34,7 +34,7 @@ const CookieConsent = () => {
         >
           <div className="flex flex-col sm:flex-row items-center gap-3 sm:gap-4">
             <p className="text-xs sm:text-sm text-foreground/90 text-center sm:text-left flex-1">
-              We use cookies to keep your experience smooth and help Gravilo remember your preferences. Cool with that?
+              🍪 Gravilo uses cookies to level up your experience. No spam, just good vibes and smoother browsing. You in?
             </p>
             <div className="flex gap-2 shrink-0">
               <Button
