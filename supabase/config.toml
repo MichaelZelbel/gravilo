@@ -11,3 +11,9 @@ verify_jwt = false  # Public endpoint - called by Discord bot
 
 [functions.stripe-webhook]
 verify_jwt = false  # Public endpoint - verified by Stripe webhook signature
+
+[functions.get-server-settings]
+verify_jwt = true
+
+[functions.save-server-settings]
+verify_jwt = true
