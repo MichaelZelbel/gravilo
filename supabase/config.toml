@@ -32,3 +32,9 @@ verify_jwt = true
 
 [functions.get-server-settings-api]
 verify_jwt = false  # Public endpoint - authenticated via x-bot-secret header
+
+[functions.kb-upload]
+verify_jwt = true
+
+[functions.kb-delete]
+verify_jwt = true
