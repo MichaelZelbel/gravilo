@@ -70,8 +70,12 @@ const Dashboard = () => {
 
   useEffect(() => {
     const init = async () => {
+      // Check if we're in Lovable preview environment
+      const isLovablePreview = window.location.hostname.includes('lovable.app') || 
+                               window.location.hostname.includes('localhost');
+      
       // Automatically bypass auth check in development/preview mode
-      if (import.meta.env.DEV) {
+      if (import.meta.env.DEV || isLovablePreview) {
         setLoading(false);
         return;
       }
