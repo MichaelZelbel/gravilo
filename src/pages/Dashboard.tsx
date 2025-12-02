@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { RefreshCw } from "lucide-react";
+import { RefreshCw, Shield } from "lucide-react";
 
 type Server = {
   id: string;
@@ -58,6 +58,7 @@ const Dashboard = () => {
   const [allowProactiveReplies, setAllowProactiveReplies] = useState(false);
   const [allowFunReplies, setAllowFunReplies] = useState(true);
   const [savingPrompt, setSavingPrompt] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
     // Check for upgrade success in URL params
@@ -131,6 +132,16 @@ const Dashboard = () => {
           .update({ discord_user_id: discordUserId })
           .eq("id", session.user.id);
       }
+
+      // Check if user is admin
+      const { data: adminRole } = await supabase
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", session.user.id)
+        .eq("role", "admin")
+        .maybeSingle();
+      
+      setIsAdmin(!!adminRole);
 
       // Get the user's discord_user_id for server filtering
       const userDiscordId = userRow?.discord_user_id || discordUserId;
@@ -419,7 +430,7 @@ const Dashboard = () => {
               </select>
             </div>
 
-            {/* Right: Plan badge + sync + logout */}
+            {/* Right: Plan badge + admin + sync + logout */}
             <div className="flex items-center gap-3">
               {serverPlan === "premium" ? (
                 <span className="hidden sm:inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-[#5865F2] to-[#9B5FFF] px-3 py-1 text-xs font-semibold shadow-[0_0_20px_rgba(88,101,242,0.8)]">
@@ -430,6 +441,17 @@ const Dashboard = () => {
                 <span className="hidden sm:inline-flex items-center gap-1 rounded-full bg-white/5 px-3 py-1 text-xs font-semibold border border-white/20 text-gray-200">
                   Free Tier
                 </span>
+              )}
+
+              {isAdmin && (
+                <a
+                  href="/admin"
+                  className="text-xs px-3 py-1.5 rounded-full bg-red-500/20 hover:bg-red-500/30 border border-red-500/30 transition flex items-center gap-1.5 text-red-300"
+                  title="Admin Panel"
+                >
+                  <Shield className="h-3.5 w-3.5" />
+                  <span className="hidden sm:inline">Admin</span>
+                </a>
               )}
 
               <button
