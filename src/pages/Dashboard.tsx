@@ -753,6 +753,12 @@ const Dashboard = () => {
   const handleSaveSettings = async () => {
     if (!selectedServerId || !session) return;
     
+    // Store previous values for revert on error
+    const prevBehaviorMode = behaviorMode;
+    const prevUseKnowledgeBase = useKnowledgeBase;
+    const prevAllowProactiveReplies = allowProactiveReplies;
+    const prevAllowFunReplies = allowFunReplies;
+    
     setSavingPrompt(true);
 
     try {
@@ -774,12 +780,34 @@ const Dashboard = () => {
       });
 
       if (response.ok) {
-        console.log("Settings saved successfully");
+        toast({
+          title: "Saved",
+          description: "Behavior settings updated successfully.",
+        });
       } else {
-        console.error("Failed to save settings");
+        // Revert state on error
+        setBehaviorMode(prevBehaviorMode);
+        setUseKnowledgeBase(prevUseKnowledgeBase);
+        setAllowProactiveReplies(prevAllowProactiveReplies);
+        setAllowFunReplies(prevAllowFunReplies);
+        toast({
+          title: "Error",
+          description: "Failed to save settings. Please try again.",
+          variant: "destructive",
+        });
       }
     } catch (err) {
       console.error("Error saving settings:", err);
+      // Revert state on error
+      setBehaviorMode(prevBehaviorMode);
+      setUseKnowledgeBase(prevUseKnowledgeBase);
+      setAllowProactiveReplies(prevAllowProactiveReplies);
+      setAllowFunReplies(prevAllowFunReplies);
+      toast({
+        title: "Error",
+        description: "Failed to save settings. Please try again.",
+        variant: "destructive",
+      });
     }
 
     setSavingPrompt(false);
