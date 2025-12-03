@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { RefreshCw, Shield, Settings, FileText, Upload, Loader2, CheckCircle, AlertCircle, Clock, X, Hash, Volume2, MessageSquare } from "lucide-react";
+import { RefreshCw, Shield, Settings, FileText, Upload, Loader2, CheckCircle, AlertCircle, Clock, X, Hash, Volume2, MessageSquare, Trash2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -96,6 +96,8 @@ const Dashboard = () => {
   const [kbLoading, setKbLoading] = useState(false);
   const [kbUploading, setKbUploading] = useState(false);
   const [kbAccessDenied, setKbAccessDenied] = useState(false);
+  const [kbDragging, setKbDragging] = useState(false);
+  const [deletingFileId, setDeletingFileId] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const pollingRef = useRef<NodeJS.Timeout | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
@@ -302,23 +304,23 @@ const Dashboard = () => {
     fetchKbFiles();
   }, [fetchKbFiles]);
 
-  // Polling for KB file status updates
+  // Polling for KB file status updates (every 5 seconds)
   useEffect(() => {
-    const hasProcessingFiles = kbFiles.some(f => f.status === "uploaded" || f.status === "indexing");
+    const hasProcessingFiles = kbFiles.some(f => f.status === "pending" || f.status === "uploaded" || f.status === "indexing");
     
     if (hasProcessingFiles && serverOverview?.server?.discord_guild_id && session) {
-      // Start polling
+      // Start polling every 5 seconds
       pollingRef.current = setInterval(() => {
         fetchKbFiles();
-      }, 2000);
+      }, 5000);
       
-      // Stop after 60 seconds
+      // Stop after 5 minutes
       const timeout = setTimeout(() => {
         if (pollingRef.current) {
           clearInterval(pollingRef.current);
           pollingRef.current = null;
         }
-      }, 60000);
+      }, 300000);
       
       return () => {
         if (pollingRef.current) {
@@ -426,7 +428,13 @@ const Dashboard = () => {
   // Handle KB file upload
   const handleKbUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file || !serverOverview?.server?.discord_guild_id || !session) return;
+    if (!file) return;
+    await uploadKbFile(file);
+  };
+
+  // Upload KB file (used by both input and drag-drop)
+  const uploadKbFile = async (file: File) => {
+    if (!serverOverview?.server?.discord_guild_id || !session) return;
     
     setKbUploading(true);
     
@@ -449,7 +457,7 @@ const Dashboard = () => {
       if (response.ok) {
         toast({
           title: "Document uploaded",
-          description: "Ingestion started…",
+          description: "Processing started…",
         });
         // Refresh file list
         await fetchKbFiles();
@@ -474,6 +482,72 @@ const Dashboard = () => {
       if (fileInputRef.current) {
         fileInputRef.current.value = "";
       }
+    }
+  };
+
+  // Handle drag and drop
+  const handleKbDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    setKbDragging(true);
+  };
+
+  const handleKbDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    setKbDragging(false);
+  };
+
+  const handleKbDrop = async (e: React.DragEvent) => {
+    e.preventDefault();
+    setKbDragging(false);
+    const file = e.dataTransfer.files?.[0];
+    if (file) {
+      await uploadKbFile(file);
+    }
+  };
+
+  // Handle KB file delete
+  const handleKbDelete = async (fileId: string) => {
+    if (!session) return;
+    
+    setDeletingFileId(fileId);
+    
+    try {
+      const response = await fetch(
+        "https://sohyviltwgpuslbjzqzh.supabase.co/functions/v1/kb-delete",
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${session.access_token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ file_id: fileId }),
+        }
+      );
+
+      if (response.ok) {
+        toast({
+          title: "File deleted",
+          description: "Document removed from knowledge base.",
+        });
+        // Remove from local state
+        setKbFiles(prev => prev.filter(f => f.id !== fileId));
+      } else {
+        const errorData = await response.json();
+        toast({
+          title: "Delete failed",
+          description: errorData.error || "Please try again.",
+          variant: "destructive",
+        });
+      }
+    } catch (err) {
+      console.error("KB delete error:", err);
+      toast({
+        title: "Delete failed",
+        description: "Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setDeletingFileId(null);
     }
   };
 
@@ -1278,12 +1352,13 @@ const Dashboard = () => {
 
                 {/* Knowledge Base */}
                 <div className="relative backdrop-blur-2xl bg-white/5 border border-white/10 rounded-3xl p-6 md:p-7 shadow-[0_0_40px_rgba(0,0,0,0.75)]">
-                  <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center justify-between mb-2">
                     <h2 className="text-lg font-semibold">Knowledge Base</h2>
                     <span className="text-xs rounded-full bg-[#2b184b] px-3 py-1 border border-[#A855F7]/50 text-[#E9D5FF]">
                       Premium
                     </span>
                   </div>
+                  <p className="text-xs text-gray-400 mb-4">Upload documents to improve Gravilo's answers in this Discord server.</p>
 
                   {serverPlan === "premium" ? (
                     <>
@@ -1300,25 +1375,42 @@ const Dashboard = () => {
                             accept=".pdf,.txt,.md,.html"
                             className="hidden"
                           />
-                          <button 
-                            onClick={() => fileInputRef.current?.click()}
-                            disabled={kbUploading}
-                            className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[#3BFFB6]/10 border border-[#3BFFB6]/60 text-xs text-emerald-200 hover:bg-[#3BFFB6]/20 transition mb-4 disabled:opacity-50"
+                          
+                          {/* Drag and drop upload area */}
+                          <div
+                            onDragOver={handleKbDragOver}
+                            onDragLeave={handleKbDragLeave}
+                            onDrop={handleKbDrop}
+                            onClick={() => !kbUploading && fileInputRef.current?.click()}
+                            className={`relative cursor-pointer border-2 border-dashed rounded-2xl p-6 mb-4 text-center transition-all ${
+                              kbDragging
+                                ? "border-[#3BFFB6] bg-[#3BFFB6]/10"
+                                : "border-white/20 hover:border-white/40 bg-black/20"
+                            } ${kbUploading ? "opacity-50 cursor-not-allowed" : ""}`}
                           >
                             {kbUploading ? (
-                              <>
-                                <Loader2 className="h-3 w-3 animate-spin" />
-                                Uploading...
-                              </>
+                              <div className="flex flex-col items-center gap-2">
+                                <Loader2 className="h-8 w-8 animate-spin text-[#3BFFB6]" />
+                                <p className="text-sm text-gray-300">Uploading...</p>
+                              </div>
                             ) : (
-                              <>
-                                <Upload className="h-3 w-3" />
-                                Upload File
-                              </>
+                              <div className="flex flex-col items-center gap-2">
+                                <Upload className={`h-8 w-8 ${kbDragging ? "text-[#3BFFB6]" : "text-gray-400"}`} />
+                                <p className="text-sm text-gray-300">
+                                  {kbDragging ? "Drop file here" : "Drag and drop a file here"}
+                                </p>
+                                <button
+                                  type="button"
+                                  className="text-xs px-4 py-2 rounded-full bg-[#3BFFB6]/10 border border-[#3BFFB6]/60 text-emerald-200 hover:bg-[#3BFFB6]/20 transition"
+                                >
+                                  Select File
+                                </button>
+                                <p className="text-[10px] text-gray-500 mt-1">PDF, TXT, Markdown, or HTML. Max 5MB.</p>
+                              </div>
                             )}
-                          </button>
-                          <p className="text-[11px] text-gray-400 mb-4">PDF, TXT, Markdown, or HTML. Max 5MB.</p>
+                          </div>
 
+                          {/* File list */}
                           <div className="space-y-2 text-xs max-h-48 overflow-y-auto">
                             {kbLoading && kbFiles.length === 0 ? (
                               <div className="flex items-center justify-center bg-black/30 border border-white/10 rounded-2xl px-3 py-6 text-gray-400">
@@ -1345,23 +1437,18 @@ const Dashboard = () => {
                                       )}
                                     </div>
                                   </div>
-                                  <div className="flex-shrink-0 ml-2">
-                                    {file.status === "uploaded" && (
-                                      <span className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full bg-gray-500/20 text-gray-400">
-                                        <Clock className="h-2.5 w-2.5" />
-                                        Waiting
-                                      </span>
-                                    )}
-                                    {file.status === "indexing" && (
+                                  <div className="flex items-center gap-2 flex-shrink-0 ml-2">
+                                    {/* Status badges */}
+                                    {(file.status === "pending" || file.status === "uploaded" || file.status === "indexing") && (
                                       <span className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full bg-yellow-500/20 text-yellow-400">
                                         <Loader2 className="h-2.5 w-2.5 animate-spin" />
-                                        Indexing...
+                                        Processing
                                       </span>
                                     )}
-                                    {file.status === "ready" && (
+                                    {(file.status === "ready" || file.status === "done") && (
                                       <span className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full bg-green-500/20 text-green-400">
                                         <CheckCircle className="h-2.5 w-2.5" />
-                                        Ready
+                                        Indexed
                                       </span>
                                     )}
                                     {file.status === "error" && (
@@ -1370,6 +1457,19 @@ const Dashboard = () => {
                                         Error
                                       </span>
                                     )}
+                                    {/* Delete button */}
+                                    <button
+                                      onClick={() => handleKbDelete(file.id)}
+                                      disabled={deletingFileId === file.id}
+                                      className="p-1 rounded-lg hover:bg-white/10 text-gray-400 hover:text-red-400 transition disabled:opacity-50"
+                                      title="Delete file"
+                                    >
+                                      {deletingFileId === file.id ? (
+                                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                      ) : (
+                                        <Trash2 className="h-3.5 w-3.5" />
+                                      )}
+                                    </button>
                                   </div>
                                 </div>
                               ))
@@ -1381,14 +1481,17 @@ const Dashboard = () => {
                   ) : (
                     <div className="relative">
                       <div className="opacity-40 pointer-events-none">
-                        <button className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[#3BFFB6]/10 border border-[#3BFFB6]/60 text-xs text-emerald-200 mb-4">
-                          Upload File
-                        </button>
-                        <p className="text-[11px] text-gray-400 mb-4">PDF, TXT, Markdown, or HTML. Max 5MB.</p>
+                        <div className="border-2 border-dashed border-white/20 rounded-2xl p-6 mb-4 text-center">
+                          <Upload className="h-8 w-8 text-gray-400 mx-auto mb-2" />
+                          <p className="text-sm text-gray-300">Drag and drop a file here</p>
+                          <button className="text-xs px-4 py-2 mt-2 rounded-full bg-[#3BFFB6]/10 border border-[#3BFFB6]/60 text-emerald-200">
+                            Select File
+                          </button>
+                        </div>
                         <div className="space-y-2 text-xs">
                           <div className="flex items-center justify-between bg-black/30 border border-white/10 rounded-2xl px-3 py-2">
                             <div className="flex items-center gap-2">
-                              <span className="inline-flex items-center justify-center h-6 w-6 rounded-md bg-red-500/20 text-[10px]">PDF</span>
+                              <FileText className="h-4 w-4 text-gray-400" />
                               <span>Example_Doc.pdf</span>
                             </div>
                           </div>
