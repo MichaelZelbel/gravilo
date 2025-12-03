@@ -279,6 +279,41 @@ const Dashboard = () => {
     loadOverview();
   }, [selectedServerId, session]);
 
+  // Realtime subscription for usage updates
+  useEffect(() => {
+    if (!selectedServerId) return;
+
+    const channel = supabase
+      .channel(`server-usage-${selectedServerId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'servers',
+          filter: `id=eq.${selectedServerId}`,
+        },
+        (payload) => {
+          const newUsage = payload.new.message_usage_current_cycle;
+          if (typeof newUsage === 'number') {
+            setServerOverview((prev) =>
+              prev
+                ? {
+                    ...prev,
+                    usage: { ...prev.usage, messages_used: newUsage },
+                  }
+                : null
+            );
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [selectedServerId]);
+
   // Fetch KB files for selected server
   const fetchKbFiles = useCallback(async () => {
     if (!serverOverview?.server?.discord_guild_id || !session) return;
