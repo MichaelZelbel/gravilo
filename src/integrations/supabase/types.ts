@@ -18,28 +18,37 @@ export type Database = {
         Row: {
           created_at: string | null
           discord_server_id: string
+          duration_ms: number | null
+          error_message: string | null
           file_name: string
           file_path: string
           file_size: number | null
           id: string
+          num_chunks: number | null
           status: string | null
         }
         Insert: {
           created_at?: string | null
           discord_server_id: string
+          duration_ms?: number | null
+          error_message?: string | null
           file_name: string
           file_path: string
           file_size?: number | null
           id?: string
+          num_chunks?: number | null
           status?: string | null
         }
         Update: {
           created_at?: string | null
           discord_server_id?: string
+          duration_ms?: number | null
+          error_message?: string | null
           file_name?: string
           file_path?: string
           file_size?: number | null
           id?: string
+          num_chunks?: number | null
           status?: string | null
         }
         Relationships: []
