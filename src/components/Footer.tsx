@@ -10,6 +10,9 @@ const Footer = () => {
             <a href="/privacy" className="hover:text-foreground transition-colors">
               Privacy
             </a>
+            <a href="/cookies" className="hover:text-foreground transition-colors">
+              Cookies
+            </a>
             <a href="#status" className="hover:text-foreground transition-colors">
               Status
             </a>
