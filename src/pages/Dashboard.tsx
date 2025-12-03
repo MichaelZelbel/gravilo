@@ -1,7 +1,21 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { RefreshCw, Shield, Settings, FileText } from "lucide-react";
+import { RefreshCw, Shield, Settings, FileText, Upload, Loader2, CheckCircle, AlertCircle, Clock } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { useToast } from "@/hooks/use-toast";
+
+type KBFile = {
+  id: string;
+  discord_server_id: string;
+  file_name: string;
+  file_path: string;
+  file_size: number | null;
+  status: string;
+  num_chunks: number | null;
+  duration_ms: number | null;
+  error_message: string | null;
+  created_at: string;
+};
 
 type Server = {
   id: string;
@@ -41,6 +55,8 @@ type ServerOverview = {
 };
 
 const Dashboard = () => {
+  const navigate = useNavigate();
+  const { toast } = useToast();
   const [session, setSession] = useState<any>(null);
   const [servers, setServers] = useState<Server[]>([]);
   const [selectedServerId, setSelectedServerId] = useState<string | null>(null);
@@ -59,6 +75,14 @@ const Dashboard = () => {
   const [allowProactiveReplies, setAllowProactiveReplies] = useState(false);
   const [allowFunReplies, setAllowFunReplies] = useState(true);
   const [savingPrompt, setSavingPrompt] = useState(false);
+  
+  // Knowledge Base state
+  const [kbFiles, setKbFiles] = useState<KBFile[]>([]);
+  const [kbLoading, setKbLoading] = useState(false);
+  const [kbUploading, setKbUploading] = useState(false);
+  const [kbAccessDenied, setKbAccessDenied] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const pollingRef = useRef<NodeJS.Timeout | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
@@ -214,6 +238,144 @@ const Dashboard = () => {
 
     loadOverview();
   }, [selectedServerId, session]);
+
+  // Fetch KB files for selected server
+  const fetchKbFiles = useCallback(async () => {
+    if (!serverOverview?.server?.discord_guild_id || !session) return;
+    
+    setKbLoading(true);
+    setKbAccessDenied(false);
+    
+    try {
+      const url = `https://sohyviltwgpuslbjzqzh.supabase.co/functions/v1/kb-list?server_id=${serverOverview.server.discord_guild_id}`;
+      const response = await fetch(url, {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+        },
+      });
+
+      if (response.status === 403) {
+        setKbAccessDenied(true);
+        setKbFiles([]);
+        return;
+      }
+
+      if (response.ok) {
+        const data = await response.json();
+        setKbFiles(data.files || []);
+      } else {
+        console.error("Failed to fetch KB files");
+        setKbFiles([]);
+      }
+    } catch (err) {
+      console.error("Error fetching KB files:", err);
+      setKbFiles([]);
+    } finally {
+      setKbLoading(false);
+    }
+  }, [serverOverview?.server?.discord_guild_id, session]);
+
+  // Load KB files when server overview changes
+  useEffect(() => {
+    fetchKbFiles();
+  }, [fetchKbFiles]);
+
+  // Polling for KB file status updates
+  useEffect(() => {
+    const hasProcessingFiles = kbFiles.some(f => f.status === "uploaded" || f.status === "indexing");
+    
+    if (hasProcessingFiles && serverOverview?.server?.discord_guild_id && session) {
+      // Start polling
+      pollingRef.current = setInterval(() => {
+        fetchKbFiles();
+      }, 2000);
+      
+      // Stop after 60 seconds
+      const timeout = setTimeout(() => {
+        if (pollingRef.current) {
+          clearInterval(pollingRef.current);
+          pollingRef.current = null;
+        }
+      }, 60000);
+      
+      return () => {
+        if (pollingRef.current) {
+          clearInterval(pollingRef.current);
+          pollingRef.current = null;
+        }
+        clearTimeout(timeout);
+      };
+    }
+  }, [kbFiles, serverOverview?.server?.discord_guild_id, session, fetchKbFiles]);
+
+  // Handle KB file upload
+  const handleKbUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !serverOverview?.server?.discord_guild_id || !session) return;
+    
+    setKbUploading(true);
+    
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("discord_server_id", serverOverview.server.discord_guild_id);
+      
+      const response = await fetch(
+        "https://sohyviltwgpuslbjzqzh.supabase.co/functions/v1/kb-upload",
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${session.access_token}`,
+          },
+          body: formData,
+        }
+      );
+
+      if (response.ok) {
+        toast({
+          title: "Document uploaded",
+          description: "Ingestion started…",
+        });
+        // Refresh file list
+        await fetchKbFiles();
+      } else {
+        const errorData = await response.json();
+        toast({
+          title: "Upload failed",
+          description: errorData.error || "Please try again.",
+          variant: "destructive",
+        });
+      }
+    } catch (err) {
+      console.error("KB upload error:", err);
+      toast({
+        title: "Upload failed",
+        description: "Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setKbUploading(false);
+      // Reset file input
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+    }
+  };
+
+  // Format file size
+  const formatFileSize = (bytes: number | null) => {
+    if (!bytes) return "";
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  };
+
+  // Format date
+  const formatDate = (dateStr: string) => {
+    const date = new Date(dateStr);
+    return date.toLocaleDateString(undefined, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
+  };
 
   const handleUpgrade = async () => {
     if (!selectedServerId) {
@@ -874,16 +1036,96 @@ const Dashboard = () => {
 
                   {serverPlan === "premium" ? (
                     <>
-                      <button className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[#3BFFB6]/10 border border-[#3BFFB6]/60 text-xs text-emerald-200 hover:bg-[#3BFFB6]/20 transition mb-4">
-                        Upload File
-                      </button>
-                      <p className="text-[11px] text-gray-400 mb-4">PDF, TXT, Markdown, or HTML. Max 5MB.</p>
-
-                      <div className="space-y-2 text-xs">
-                        <div className="flex items-center justify-center bg-black/30 border border-white/10 rounded-2xl px-3 py-6 text-gray-400">
-                          No files uploaded yet.
+                      {kbAccessDenied ? (
+                        <div className="flex items-center justify-center bg-black/30 border border-white/10 rounded-2xl px-3 py-6 text-gray-400 text-xs">
+                          You don't have access to this server's Knowledge Base.
                         </div>
-                      </div>
+                      ) : (
+                        <>
+                          <input
+                            type="file"
+                            ref={fileInputRef}
+                            onChange={handleKbUpload}
+                            accept=".pdf,.txt,.md,.html"
+                            className="hidden"
+                          />
+                          <button 
+                            onClick={() => fileInputRef.current?.click()}
+                            disabled={kbUploading}
+                            className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[#3BFFB6]/10 border border-[#3BFFB6]/60 text-xs text-emerald-200 hover:bg-[#3BFFB6]/20 transition mb-4 disabled:opacity-50"
+                          >
+                            {kbUploading ? (
+                              <>
+                                <Loader2 className="h-3 w-3 animate-spin" />
+                                Uploading...
+                              </>
+                            ) : (
+                              <>
+                                <Upload className="h-3 w-3" />
+                                Upload File
+                              </>
+                            )}
+                          </button>
+                          <p className="text-[11px] text-gray-400 mb-4">PDF, TXT, Markdown, or HTML. Max 5MB.</p>
+
+                          <div className="space-y-2 text-xs max-h-48 overflow-y-auto">
+                            {kbLoading && kbFiles.length === 0 ? (
+                              <div className="flex items-center justify-center bg-black/30 border border-white/10 rounded-2xl px-3 py-6 text-gray-400">
+                                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                                Loading files...
+                              </div>
+                            ) : kbFiles.length === 0 ? (
+                              <div className="flex items-center justify-center bg-black/30 border border-white/10 rounded-2xl px-3 py-6 text-gray-400">
+                                No files uploaded yet for this server.
+                              </div>
+                            ) : (
+                              kbFiles.map((file) => (
+                                <div key={file.id} className="flex items-center justify-between bg-black/30 border border-white/10 rounded-2xl px-3 py-2">
+                                  <div className="flex items-center gap-2 min-w-0 flex-1">
+                                    <FileText className="h-4 w-4 text-gray-400 flex-shrink-0" />
+                                    <div className="min-w-0">
+                                      <div className="truncate font-medium">{file.file_name}</div>
+                                      <div className="text-[10px] text-gray-500">
+                                        {formatDate(file.created_at)}
+                                        {file.file_size && ` · ${formatFileSize(file.file_size)}`}
+                                      </div>
+                                      {file.status === "error" && file.error_message && (
+                                        <div className="text-[10px] text-red-400 truncate">{file.error_message}</div>
+                                      )}
+                                    </div>
+                                  </div>
+                                  <div className="flex-shrink-0 ml-2">
+                                    {file.status === "uploaded" && (
+                                      <span className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full bg-gray-500/20 text-gray-400">
+                                        <Clock className="h-2.5 w-2.5" />
+                                        Waiting
+                                      </span>
+                                    )}
+                                    {file.status === "indexing" && (
+                                      <span className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full bg-yellow-500/20 text-yellow-400">
+                                        <Loader2 className="h-2.5 w-2.5 animate-spin" />
+                                        Indexing...
+                                      </span>
+                                    )}
+                                    {file.status === "ready" && (
+                                      <span className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full bg-green-500/20 text-green-400">
+                                        <CheckCircle className="h-2.5 w-2.5" />
+                                        Ready
+                                      </span>
+                                    )}
+                                    {file.status === "error" && (
+                                      <span className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full bg-red-500/20 text-red-400">
+                                        <AlertCircle className="h-2.5 w-2.5" />
+                                        Error
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                              ))
+                            )}
+                          </div>
+                        </>
+                      )}
                     </>
                   ) : (
                     <div className="relative">
