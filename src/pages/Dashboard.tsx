@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { RefreshCw, Shield, Settings, FileText, Upload, Loader2, CheckCircle, AlertCircle, Clock, X, Hash, Volume2, MessageSquare, Trash2 } from "lucide-react";
+import { RefreshCw, Shield, Settings, FileText, Upload, Loader2, CheckCircle, AlertCircle, Clock, X, Hash, Volume2, MessageSquare, Trash2, Send, Maximize2, Bot, User } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -9,6 +9,11 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+
+type ChatMessage = {
+  role: "user" | "assistant";
+  content: string;
+};
 
 type Channel = {
   discord_channel_id: string;
@@ -107,6 +112,14 @@ const Dashboard = () => {
   const [channelsLoading, setChannelsLoading] = useState(false);
   const [channelsModalOpen, setChannelsModalOpen] = useState(false);
   const [updatingChannelId, setUpdatingChannelId] = useState<string | null>(null);
+
+  // Chat with Gravilo state
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
+  const [chatInput, setChatInput] = useState("");
+  const [chatLoading, setChatLoading] = useState(false);
+  const [chatModalOpen, setChatModalOpen] = useState(false);
+  const chatScrollRef = useRef<HTMLDivElement>(null);
+  const chatModalScrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     // Check for upgrade success in URL params
@@ -255,6 +268,10 @@ const Dashboard = () => {
         console.error("Error loading overview:", err);
         setServerOverview(null);
       }
+
+      // Reset chat when server changes
+      setChatMessages([]);
+      setChatInput("");
 
       setLoadingOverview(false);
     };
@@ -737,6 +754,63 @@ const Dashboard = () => {
       console.error("Error refreshing usage:", err);
     }
     setRefreshingUsage(false);
+  };
+
+  // Send chat message to Gravilo
+  const sendChatMessage = async () => {
+    if (!chatInput.trim() || !serverOverview?.server?.discord_guild_id || !session || chatLoading) return;
+    
+    const userMessage = chatInput.trim();
+    setChatInput("");
+    setChatMessages(prev => [...prev, { role: "user", content: userMessage }]);
+    setChatLoading(true);
+
+    try {
+      const url = `https://sohyviltwgpuslbjzqzh.supabase.co/functions/v1/chat-server`;
+      const response = await fetch(url, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          discord_server_id: serverOverview.server.discord_guild_id,
+          question: userMessage,
+        }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setChatMessages(prev => [...prev, { role: "assistant", content: data.answer || "No response" }]);
+      } else {
+        const errorData = await response.json().catch(() => ({}));
+        console.error("Chat error:", errorData);
+        toast({
+          title: "Error",
+          description: "Something went wrong talking to Gravilo. Please try again.",
+          variant: "destructive",
+        });
+        // Remove the user message on error
+        setChatMessages(prev => prev.slice(0, -1));
+      }
+    } catch (err) {
+      console.error("Chat error:", err);
+      toast({
+        title: "Error",
+        description: "Something went wrong talking to Gravilo. Please try again.",
+        variant: "destructive",
+      });
+      // Remove the user message on error
+      setChatMessages(prev => prev.slice(0, -1));
+    }
+
+    setChatLoading(false);
+
+    // Scroll to bottom after message
+    setTimeout(() => {
+      chatScrollRef.current?.scrollTo({ top: chatScrollRef.current.scrollHeight, behavior: "smooth" });
+      chatModalScrollRef.current?.scrollTo({ top: chatModalScrollRef.current.scrollHeight, behavior: "smooth" });
+    }, 100);
   };
 
   // Derived values from serverOverview
@@ -1512,6 +1586,96 @@ const Dashboard = () => {
                   )}
                 </div>
               </section>
+
+              {/* Row 3: Chat with Gravilo */}
+              <section>
+                <div className="backdrop-blur-2xl bg-white/5 border border-white/10 rounded-3xl p-6 md:p-7 shadow-[0_0_40px_rgba(0,0,0,0.75)]">
+                  <div className="flex items-center justify-between mb-2">
+                    <h2 className="text-lg font-semibold flex items-center gap-2">
+                      <Bot className="h-5 w-5 text-[#5865F2]" />
+                      Chat with Gravilo
+                    </h2>
+                    <button
+                      onClick={() => setChatModalOpen(true)}
+                      className="text-xs px-3 py-1.5 rounded-full bg-white/10 hover:bg-white/20 border border-white/10 transition flex items-center gap-1.5"
+                    >
+                      <Maximize2 className="h-3 w-3" />
+                      Open full chat
+                    </button>
+                  </div>
+                  <p className="text-xs text-gray-400 mb-4">Ask Gravilo a question for this server.</p>
+
+                  {/* Chat messages area */}
+                  <div 
+                    ref={chatScrollRef}
+                    className="h-48 overflow-y-auto mb-4 space-y-3 bg-black/20 rounded-2xl p-3 border border-white/10"
+                  >
+                    {chatMessages.length === 0 ? (
+                      <div className="flex items-center justify-center h-full text-gray-500 text-sm">
+                        Start a conversation with Gravilo
+                      </div>
+                    ) : (
+                      chatMessages.map((msg, idx) => (
+                        <div
+                          key={idx}
+                          className={`flex gap-2 ${msg.role === "user" ? "justify-end" : "justify-start"}`}
+                        >
+                          {msg.role === "assistant" && (
+                            <div className="h-6 w-6 rounded-full bg-gradient-to-tr from-[#5865F2] to-[#3BFFB6] flex items-center justify-center flex-shrink-0">
+                              <Bot className="h-3.5 w-3.5 text-white" />
+                            </div>
+                          )}
+                          <div
+                            className={`max-w-[80%] rounded-2xl px-3 py-2 text-sm ${
+                              msg.role === "user"
+                                ? "bg-[#5865F2] text-white"
+                                : "bg-white/10 text-gray-200"
+                            }`}
+                          >
+                            {msg.content}
+                          </div>
+                          {msg.role === "user" && (
+                            <div className="h-6 w-6 rounded-full bg-white/20 flex items-center justify-center flex-shrink-0">
+                              <User className="h-3.5 w-3.5 text-white" />
+                            </div>
+                          )}
+                        </div>
+                      ))
+                    )}
+                    {chatLoading && (
+                      <div className="flex gap-2 justify-start">
+                        <div className="h-6 w-6 rounded-full bg-gradient-to-tr from-[#5865F2] to-[#3BFFB6] flex items-center justify-center flex-shrink-0">
+                          <Bot className="h-3.5 w-3.5 text-white" />
+                        </div>
+                        <div className="bg-white/10 rounded-2xl px-3 py-2 text-sm text-gray-400 flex items-center gap-2">
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                          Thinking...
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Input row */}
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={chatInput}
+                      onChange={(e) => setChatInput(e.target.value)}
+                      onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && sendChatMessage()}
+                      placeholder="Ask Gravilo something…"
+                      disabled={chatLoading || !serverOverview}
+                      className="flex-1 bg-black/30 border border-white/15 rounded-full px-4 py-2.5 text-sm text-gray-100 placeholder:text-gray-500 outline-none focus:border-[#5865F2] focus:ring-1 focus:ring-[#5865F2] disabled:opacity-50"
+                    />
+                    <button
+                      onClick={sendChatMessage}
+                      disabled={chatLoading || !chatInput.trim() || !serverOverview}
+                      className="px-4 py-2.5 rounded-full bg-[#5865F2] hover:bg-[#6b74ff] disabled:opacity-50 disabled:cursor-not-allowed transition flex items-center gap-1.5"
+                    >
+                      <Send className="h-4 w-4" />
+                    </button>
+                  </div>
+                </div>
+              </section>
             </main>
           )}
         </div>
@@ -1597,6 +1761,89 @@ const Dashboard = () => {
                 Voice channels and categories are hidden. Gravilo only responds in text channels.
               </p>
             )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Chat with Gravilo Modal */}
+      <Dialog open={chatModalOpen} onOpenChange={setChatModalOpen}>
+        <DialogContent className="max-w-2xl h-[80vh] flex flex-col bg-[#0a0f1e] border border-white/10 text-white">
+          <DialogHeader>
+            <DialogTitle className="text-lg font-semibold flex items-center gap-2">
+              <Bot className="h-5 w-5 text-[#5865F2]" />
+              Chat with Gravilo – {serverOverview?.server.name || "Server"}
+            </DialogTitle>
+          </DialogHeader>
+          
+          {/* Chat messages area */}
+          <div 
+            ref={chatModalScrollRef}
+            className="flex-1 overflow-y-auto space-y-3 bg-black/20 rounded-2xl p-4 border border-white/10"
+          >
+            {chatMessages.length === 0 ? (
+              <div className="flex items-center justify-center h-full text-gray-500 text-sm">
+                Start a conversation with Gravilo
+              </div>
+            ) : (
+              chatMessages.map((msg, idx) => (
+                <div
+                  key={idx}
+                  className={`flex gap-3 ${msg.role === "user" ? "justify-end" : "justify-start"}`}
+                >
+                  {msg.role === "assistant" && (
+                    <div className="h-8 w-8 rounded-full bg-gradient-to-tr from-[#5865F2] to-[#3BFFB6] flex items-center justify-center flex-shrink-0">
+                      <Bot className="h-4 w-4 text-white" />
+                    </div>
+                  )}
+                  <div
+                    className={`max-w-[75%] rounded-2xl px-4 py-3 text-sm ${
+                      msg.role === "user"
+                        ? "bg-[#5865F2] text-white"
+                        : "bg-white/10 text-gray-200"
+                    }`}
+                  >
+                    {msg.content}
+                  </div>
+                  {msg.role === "user" && (
+                    <div className="h-8 w-8 rounded-full bg-white/20 flex items-center justify-center flex-shrink-0">
+                      <User className="h-4 w-4 text-white" />
+                    </div>
+                  )}
+                </div>
+              ))
+            )}
+            {chatLoading && (
+              <div className="flex gap-3 justify-start">
+                <div className="h-8 w-8 rounded-full bg-gradient-to-tr from-[#5865F2] to-[#3BFFB6] flex items-center justify-center flex-shrink-0">
+                  <Bot className="h-4 w-4 text-white" />
+                </div>
+                <div className="bg-white/10 rounded-2xl px-4 py-3 text-sm text-gray-400 flex items-center gap-2">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Thinking...
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Input row */}
+          <div className="flex gap-2 pt-4">
+            <input
+              type="text"
+              value={chatInput}
+              onChange={(e) => setChatInput(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && sendChatMessage()}
+              placeholder="Ask Gravilo something…"
+              disabled={chatLoading || !serverOverview}
+              className="flex-1 bg-black/30 border border-white/15 rounded-full px-4 py-3 text-sm text-gray-100 placeholder:text-gray-500 outline-none focus:border-[#5865F2] focus:ring-1 focus:ring-[#5865F2] disabled:opacity-50"
+            />
+            <button
+              onClick={sendChatMessage}
+              disabled={chatLoading || !chatInput.trim() || !serverOverview}
+              className="px-5 py-3 rounded-full bg-[#5865F2] hover:bg-[#6b74ff] disabled:opacity-50 disabled:cursor-not-allowed transition flex items-center gap-2"
+            >
+              <Send className="h-4 w-4" />
+              <span className="text-sm">Send</span>
+            </button>
           </div>
         </DialogContent>
       </Dialog>
