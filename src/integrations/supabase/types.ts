@@ -14,6 +14,36 @@ export type Database = {
   }
   public: {
     Tables: {
+      server_activity: {
+        Row: {
+          channel_name: string | null
+          created_at: string | null
+          id: string
+          query: string
+          server_id: string
+          source: string
+          user_name: string
+        }
+        Insert: {
+          channel_name?: string | null
+          created_at?: string | null
+          id?: string
+          query: string
+          server_id: string
+          source: string
+          user_name: string
+        }
+        Update: {
+          channel_name?: string | null
+          created_at?: string | null
+          id?: string
+          query?: string
+          server_id?: string
+          source?: string
+          user_name?: string
+        }
+        Relationships: []
+      }
       server_channels: {
         Row: {
           allowed: boolean
