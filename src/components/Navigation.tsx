@@ -4,6 +4,7 @@ import graviloLogo from "@/assets/gravilo-logo.webp";
 import { supabase } from "@/integrations/supabase/client";
 import { useEffect, useState } from "react";
 import type { Session } from "@supabase/supabase-js";
+import { DISCORD_BOT_INVITE_URL } from "@/constants/urls";
 
 const Navigation = () => {
   const [session, setSession] = useState<Session | null>(null);
@@ -50,8 +51,14 @@ const Navigation = () => {
             <Link to="/pricing" className="text-foreground/80 hover:text-foreground transition-colors">
               Pricing
             </Link>
-            <a href="/#docs" className="text-foreground/80 hover:text-foreground transition-colors">
-              Docs
+            <a 
+              href={DISCORD_BOT_INVITE_URL}
+              target="_blank"
+              rel="noreferrer"
+              className="text-foreground/90 hover:text-foreground transition-colors relative group"
+            >
+              Start Free
+              <span className="absolute left-0 -bottom-0.5 h-0.5 w-0 bg-gradient-to-r from-primary to-secondary transition-all duration-300 ease-out group-hover:w-full" />
             </a>
           </div>
 

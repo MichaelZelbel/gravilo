@@ -1,6 +1,8 @@
 import { Button } from "@/components/ui/button";
 import graviloBot from "@/assets/gravilo-bot.webp";
 import heroBackground from "@/assets/hero-background-grid.webp";
+import { DISCORD_BOT_INVITE_URL } from "@/constants/urls";
+
 const Hero = () => {
   return <section className="min-h-screen flex items-center justify-center px-6 pt-20 pb-20 relative">
       {/* Background Grid Image - Full Width */}
@@ -41,7 +43,7 @@ const Hero = () => {
           {/* CTA Button - positioned below and overlapping glass card */}
           <div className="flex justify-center -mt-6 relative z-20 isolate overflow-hidden">
             <a
-              href="https://discord.com/api/oauth2/authorize?client_id=1442892578264715385&permissions=534723947584&scope=bot"
+              href={DISCORD_BOT_INVITE_URL}
               target="_blank"
               rel="noreferrer"
             >
