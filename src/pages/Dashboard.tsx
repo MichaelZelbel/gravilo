@@ -127,6 +127,17 @@ const Dashboard = () => {
   const chatScrollRef = useRef<HTMLDivElement>(null);
   const chatModalScrollRef = useRef<HTMLDivElement>(null);
 
+  // Recent Activity state
+  type ActivityItem = {
+    query: string;
+    source: string;
+    user_name: string;
+    channel_name: string | null;
+    created_at: string;
+  };
+  const [recentActivity, setRecentActivity] = useState<ActivityItem[]>([]);
+  const [activityLoading, setActivityLoading] = useState(false);
+
   useEffect(() => {
     // Check for upgrade success in URL params
     const params = new URLSearchParams(window.location.search);
@@ -398,6 +409,41 @@ const Dashboard = () => {
   useEffect(() => {
     fetchKbFiles();
   }, [fetchKbFiles]);
+
+  // Fetch recent activity for selected server
+  const fetchActivity = useCallback(async () => {
+    if (!serverOverview?.server?.discord_guild_id || !session) return;
+    
+    setActivityLoading(true);
+    
+    try {
+      const url = `https://sohyviltwgpuslbjzqzh.supabase.co/functions/v1/get-server-activity?server_id=${serverOverview.server.discord_guild_id}&limit=5`;
+      const response = await fetch(url, {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setRecentActivity(data.items || []);
+      } else {
+        console.error("Failed to fetch activity");
+        setRecentActivity([]);
+      }
+    } catch (err) {
+      console.error("Error fetching activity:", err);
+      setRecentActivity([]);
+    } finally {
+      setActivityLoading(false);
+    }
+  }, [serverOverview?.server?.discord_guild_id, session]);
+
+  // Load activity when server overview changes
+  useEffect(() => {
+    fetchActivity();
+  }, [fetchActivity]);
 
   // Polling for KB file status updates (every 5 seconds)
   useEffect(() => {
@@ -926,6 +972,8 @@ const Dashboard = () => {
       if (response.ok) {
         const data = await response.json();
         setChatMessages(prev => [...prev, { role: "assistant", content: data.answer || "No response" }]);
+        // Refresh activity after successful chat
+        setTimeout(() => fetchActivity(), 500);
       } else {
         const errorData = await response.json().catch(() => ({}));
         console.error("Chat error:", errorData);
@@ -1303,15 +1351,48 @@ const Dashboard = () => {
 
                     {/* Recent activity list */}
                     <div className="flex-1">
-                      <h2 className="text-lg font-semibold mb-3">Recent Activity</h2>
-                      <div className="space-y-2 text-xs md:text-sm">
-                        <div className="flex items-center justify-center bg-white/5 rounded-xl px-3 py-6 border border-white/10 text-gray-400">
-                          No recent activity yet.
-                        </div>
+                      <div className="flex items-center justify-between mb-3">
+                        <h2 className="text-lg font-semibold">Recent Activity</h2>
+                        <button
+                          onClick={fetchActivity}
+                          disabled={activityLoading}
+                          className="p-1.5 rounded-lg bg-white/10 hover:bg-white/20 border border-white/10 transition disabled:opacity-50"
+                          title="Refresh activity"
+                        >
+                          <RefreshCw className={`h-3.5 w-3.5 ${activityLoading ? "animate-spin" : ""}`} />
+                        </button>
                       </div>
-                      <p className="text-[10px] text-gray-500 mt-2">
-                        Activity will appear here once Gravilo starts answering questions in your server.
-                      </p>
+                      <div className="space-y-2 text-xs md:text-sm">
+                        {activityLoading && recentActivity.length === 0 ? (
+                          <div className="flex items-center justify-center bg-white/5 rounded-xl px-3 py-6 border border-white/10 text-gray-400">
+                            <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                            Loading activity...
+                          </div>
+                        ) : recentActivity.length === 0 ? (
+                          <div className="flex items-center justify-center bg-white/5 rounded-xl px-3 py-6 border border-white/10 text-gray-400">
+                            No recent activity yet.
+                          </div>
+                        ) : (
+                          recentActivity.map((activity, idx) => (
+                            <div
+                              key={idx}
+                              className="bg-white/5 rounded-xl px-3 py-2.5 border border-white/10"
+                            >
+                              <p className="text-gray-200 truncate" title={activity.query}>
+                                {activity.query.length > 60 ? `${activity.query.slice(0, 60)}...` : activity.query}
+                              </p>
+                              <p className="text-[10px] text-gray-500 mt-1">
+                                From {activity.source} · {new Date(activity.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                              </p>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                      {recentActivity.length === 0 && (
+                        <p className="text-[10px] text-gray-500 mt-2">
+                          Activity will appear here once Gravilo starts answering questions in your server.
+                        </p>
+                      )}
                     </div>
                   </div>
                 </div>

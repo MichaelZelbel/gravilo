@@ -131,6 +131,35 @@ serve(async (req) => {
     const answerText = await n8nResponse.text();
     console.log("n8n response received, length:", answerText.length);
 
+    // Log activity to server_activity table
+    try {
+      // Get user's display name or email prefix for activity log
+      const userName = user.user_metadata?.full_name || 
+                       user.user_metadata?.name || 
+                       user.email?.split("@")[0] || 
+                       "User";
+      
+      const { error: activityError } = await supabase
+        .from("server_activity")
+        .insert({
+          server_id: server_id,
+          source: "dashboard",
+          user_name: userName,
+          channel_name: channel_name || "dashboard",
+          query: query,
+        });
+
+      if (activityError) {
+        console.error("Failed to log activity:", activityError);
+        // Don't fail the request if activity logging fails
+      } else {
+        console.log("Activity logged for server:", server_id);
+      }
+    } catch (activityErr) {
+      console.error("Activity logging error:", activityErr);
+      // Don't fail the request if activity logging fails
+    }
+
     // Return the answer wrapped in JSON for frontend
     return new Response(JSON.stringify({ answer: answerText || "No response from Gravilo" }), {
       status: 200,
