@@ -103,6 +103,30 @@ export type Database = {
         }
         Relationships: []
       }
+      server_personality: {
+        Row: {
+          custom_prompt: string | null
+          id: string
+          preset: string
+          server_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          custom_prompt?: string | null
+          id?: string
+          preset?: string
+          server_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          custom_prompt?: string | null
+          id?: string
+          preset?: string
+          server_id?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       server_plans: {
         Row: {
           created_at: string | null
