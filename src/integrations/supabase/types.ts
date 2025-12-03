@@ -16,6 +16,7 @@ export type Database = {
     Tables: {
       server_channels: {
         Row: {
+          allowed: boolean
           created_at: string | null
           discord_guild_id: string
           id: string
@@ -28,6 +29,7 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
+          allowed?: boolean
           created_at?: string | null
           discord_guild_id: string
           id: string
@@ -40,6 +42,7 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
+          allowed?: boolean
           created_at?: string | null
           discord_guild_id?: string
           id?: string

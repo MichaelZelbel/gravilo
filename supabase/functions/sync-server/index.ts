@@ -166,8 +166,18 @@ serve(async (req) => {
       console.error("Error updating server:", updateError);
     }
 
-    // Upsert channels
+    // Upsert channels - preserve 'allowed' field for existing channels
     if (channelsData.length > 0) {
+      // First, get existing channel IDs to preserve their 'allowed' status
+      const { data: existingChannels } = await supabaseAdmin
+        .from("server_channels")
+        .select("id, allowed")
+        .eq("server_id", server_id);
+
+      const existingAllowedMap = new Map(
+        (existingChannels || []).map((ch: any) => [ch.id, ch.allowed])
+      );
+
       const channelRecords = channelsData.map((ch: any) => ({
         id: ch.id,
         server_id: server_id,
@@ -177,6 +187,8 @@ serve(async (req) => {
         position: ch.position || 0,
         parent_id: ch.parent_id || null,
         nsfw: ch.nsfw || false,
+        // Preserve existing 'allowed' status, default to true for new channels
+        allowed: existingAllowedMap.has(ch.id) ? existingAllowedMap.get(ch.id) : true,
         updated_at: new Date().toISOString(),
       }));
 
