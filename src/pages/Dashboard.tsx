@@ -642,6 +642,29 @@ const Dashboard = () => {
     setSyncing(false);
   };
 
+  // Refresh usage data
+  const [refreshingUsage, setRefreshingUsage] = useState(false);
+  const refreshUsageData = async () => {
+    if (!selectedServerId || !session) return;
+    setRefreshingUsage(true);
+    try {
+      const url = `https://sohyviltwgpuslbjzqzh.supabase.co/functions/v1/get-server-overview?server_id=${selectedServerId}`;
+      const response = await fetch(url, {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+        },
+      });
+      if (response.ok) {
+        const data: ServerOverview = await response.json();
+        setServerOverview(data);
+      }
+    } catch (err) {
+      console.error("Error refreshing usage:", err);
+    }
+    setRefreshingUsage(false);
+  };
+
   // Derived values from serverOverview
   const serverPlan = serverOverview?.plan || "free";
   const usage = serverOverview?.usage.messages_used ?? 0;
@@ -649,8 +672,9 @@ const Dashboard = () => {
   const cycleEnd = serverOverview?.usage.cycle_end ? new Date(serverOverview.usage.cycle_end) : null;
   const cycleEndFormatted = cycleEnd ? cycleEnd.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'N/A';
   const usagePercent = limit > 0 ? Math.min((usage / limit) * 100, 100) : 0;
+  const isCritical = usagePercent >= 95;
+  const isWarning = usagePercent >= 80 && usagePercent < 95;
   const isAtLimit = usage >= limit;
-  const isNearLimit = usagePercent >= 80 && !isAtLimit;
 
   if (loading) {
     return (
@@ -887,6 +911,15 @@ const Dashboard = () => {
               <section className="grid grid-cols-1 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)] gap-6">
                 {/* Overview card */}
                 <div className="backdrop-blur-2xl bg-white/5 border border-white/10 rounded-3xl p-6 md:p-7 shadow-[0_0_40px_rgba(0,0,0,0.75)] relative overflow-hidden">
+                  {/* Refresh button */}
+                  <button
+                    onClick={refreshUsageData}
+                    disabled={refreshingUsage}
+                    className="absolute top-4 right-4 z-20 p-2 rounded-lg bg-white/10 hover:bg-white/20 border border-white/10 transition disabled:opacity-50"
+                    title="Refresh usage data"
+                  >
+                    <RefreshCw className={`h-4 w-4 ${refreshingUsage ? "animate-spin" : ""}`} />
+                  </button>
                   {/* Subtle inner glow */}
                   <div className="pointer-events-none absolute inset-x-10 -top-16 h-32 bg-gradient-to-r from-[#5865F2]/40 via-[#3BFFB6]/30 to-[#A855F7]/40 blur-3xl opacity-70" />
 
@@ -908,7 +941,7 @@ const Dashboard = () => {
                             cx="80"
                             cy="80"
                             r="72"
-                            stroke={isAtLimit ? "url(#usageGradientRed)" : isNearLimit ? "url(#usageGradientOrange)" : "url(#usageGradient)"}
+                            stroke={isCritical || isAtLimit ? "url(#usageGradientRed)" : isWarning ? "url(#usageGradientOrange)" : "url(#usageGradient)"}
                             strokeWidth="12"
                             fill="none"
                             strokeLinecap="round"
@@ -933,8 +966,11 @@ const Dashboard = () => {
                           <span className="text-xs uppercase tracking-wide text-gray-400 mb-1">
                             Current Usage
                           </span>
-                          <span className={`text-2xl font-semibold ${isAtLimit ? "text-red-400" : isNearLimit ? "text-orange-400" : ""}`}>
+                          <span className={`text-2xl font-semibold ${isCritical || isAtLimit ? "text-red-400" : isWarning ? "text-orange-400" : ""}`}>
                             {usage.toLocaleString()} / {limit.toLocaleString()}
+                          </span>
+                          <span className={`text-sm font-medium mt-1 ${isCritical || isAtLimit ? "text-red-400" : isWarning ? "text-orange-400" : "text-gray-300"}`}>
+                            {Math.round(usagePercent)}%
                           </span>
                           <span className="text-xs text-gray-400 mt-1">Resets {cycleEndFormatted}</span>
                         </div>
@@ -958,10 +994,10 @@ const Dashboard = () => {
                       )}
                       
                       {/* Near limit warning */}
-                      {isNearLimit && !isAtLimit && serverPlan !== "premium" && (
+                      {isWarning && !isAtLimit && serverPlan !== "premium" && (
                         <div className="mt-4 text-center">
                           <p className="text-xs text-orange-400 mb-1">
-                            Running low on messages
+                            Running low on messages – Consider upgrading to Premium
                           </p>
                           <button
                             onClick={handleUpgrade}
