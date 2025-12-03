@@ -1,0 +1,4 @@
+DELETE FROM server_plans WHERE server_id = '22617651-b57f-4c07-9481-346f5827f4a9';
+DELETE FROM server_settings WHERE server_id = '22617651-b57f-4c07-9481-346f5827f4a9';
+DELETE FROM server_usage WHERE server_id = '22617651-b57f-4c07-9481-346f5827f4a9';
+DELETE FROM servers WHERE id = '22617651-b57f-4c07-9481-346f5827f4a9';
