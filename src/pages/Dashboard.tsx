@@ -1766,7 +1766,7 @@ const Dashboard = () => {
 
       {/* Chat with Gravilo Modal */}
       <Dialog open={chatModalOpen} onOpenChange={setChatModalOpen}>
-        <DialogContent className="max-w-2xl h-[80vh] flex flex-col bg-[#0a0f1e] border border-white/10 text-white">
+        <DialogContent className="max-w-[95vw] w-full h-[90vh] flex flex-col bg-[#0a0f1e] border border-white/10 text-white">
           <DialogHeader>
             <DialogTitle className="text-lg font-semibold flex items-center gap-2">
               <Bot className="h-5 w-5 text-[#5865F2]" />
