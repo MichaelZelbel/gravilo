@@ -1251,15 +1251,6 @@ const Dashboard = () => {
               <section className="grid grid-cols-1 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)] gap-6">
                 {/* Overview card */}
                 <div className="backdrop-blur-2xl bg-white/5 border border-white/10 rounded-3xl p-6 md:p-7 shadow-[0_0_40px_rgba(0,0,0,0.75)] relative overflow-hidden">
-                  {/* Refresh button */}
-                  <button
-                    onClick={refreshUsageData}
-                    disabled={refreshingUsage}
-                    className="absolute top-4 right-4 z-20 p-2 rounded-lg bg-white/10 hover:bg-white/20 border border-white/10 transition disabled:opacity-50"
-                    title="Refresh usage data"
-                  >
-                    <RefreshCw className={`h-4 w-4 ${refreshingUsage ? "animate-spin" : ""}`} />
-                  </button>
                   {/* Subtle inner glow */}
                   <div className="pointer-events-none absolute inset-x-10 -top-16 h-32 bg-gradient-to-r from-[#5865F2]/40 via-[#3BFFB6]/30 to-[#A855F7]/40 blur-3xl opacity-70" />
 
