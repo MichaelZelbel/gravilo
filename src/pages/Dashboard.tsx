@@ -649,6 +649,8 @@ const Dashboard = () => {
   const cycleEnd = serverOverview?.usage.cycle_end ? new Date(serverOverview.usage.cycle_end) : null;
   const cycleEndFormatted = cycleEnd ? cycleEnd.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'N/A';
   const usagePercent = limit > 0 ? Math.min((usage / limit) * 100, 100) : 0;
+  const isAtLimit = usage >= limit;
+  const isNearLimit = usagePercent >= 80 && !isAtLimit;
 
   if (loading) {
     return (
@@ -890,7 +892,7 @@ const Dashboard = () => {
 
                   <div className="relative z-10 flex flex-col lg:flex-row gap-8">
                     {/* Circular usage */}
-                    <div className="flex-1 flex items-center justify-center">
+                    <div className="flex-1 flex flex-col items-center justify-center">
                       <div className="relative h-40 w-40">
                         {/* Background ring */}
                         <svg className="h-40 w-40 transform -rotate-90">
@@ -906,7 +908,7 @@ const Dashboard = () => {
                             cx="80"
                             cy="80"
                             r="72"
-                            stroke="url(#usageGradient)"
+                            stroke={isAtLimit ? "url(#usageGradientRed)" : isNearLimit ? "url(#usageGradientOrange)" : "url(#usageGradient)"}
                             strokeWidth="12"
                             fill="none"
                             strokeLinecap="round"
@@ -917,18 +919,58 @@ const Dashboard = () => {
                               <stop offset="0%" stopColor="#5865F2" />
                               <stop offset="100%" stopColor="#A855F7" />
                             </linearGradient>
+                            <linearGradient id="usageGradientOrange" x1="0%" y1="0%" x2="100%" y2="0%">
+                              <stop offset="0%" stopColor="#F59E0B" />
+                              <stop offset="100%" stopColor="#EF4444" />
+                            </linearGradient>
+                            <linearGradient id="usageGradientRed" x1="0%" y1="0%" x2="100%" y2="0%">
+                              <stop offset="0%" stopColor="#EF4444" />
+                              <stop offset="100%" stopColor="#DC2626" />
+                            </linearGradient>
                           </defs>
                         </svg>
                         <div className="absolute inset-0 flex flex-col items-center justify-center">
                           <span className="text-xs uppercase tracking-wide text-gray-400 mb-1">
                             Current Usage
                           </span>
-                          <span className="text-2xl font-semibold">
+                          <span className={`text-2xl font-semibold ${isAtLimit ? "text-red-400" : isNearLimit ? "text-orange-400" : ""}`}>
                             {usage.toLocaleString()} / {limit.toLocaleString()}
                           </span>
                           <span className="text-xs text-gray-400 mt-1">Resets {cycleEndFormatted}</span>
                         </div>
                       </div>
+                      
+                      {/* Limit reached warning */}
+                      {isAtLimit && (
+                        <div className="mt-4 text-center">
+                          <p className="text-sm text-red-400 font-medium mb-2">
+                            Limit reached – Gravilo won't reply until reset
+                          </p>
+                          {serverPlan !== "premium" && (
+                            <button
+                              onClick={handleUpgrade}
+                              className="text-xs px-4 py-2 rounded-full bg-gradient-to-r from-red-500 to-orange-500 hover:from-red-600 hover:to-orange-600 shadow-[0_0_18px_rgba(239,68,68,0.5)] transition"
+                            >
+                              Upgrade to increase limit
+                            </button>
+                          )}
+                        </div>
+                      )}
+                      
+                      {/* Near limit warning */}
+                      {isNearLimit && !isAtLimit && serverPlan !== "premium" && (
+                        <div className="mt-4 text-center">
+                          <p className="text-xs text-orange-400 mb-1">
+                            Running low on messages
+                          </p>
+                          <button
+                            onClick={handleUpgrade}
+                            className="text-xs px-3 py-1.5 rounded-full bg-orange-500/20 hover:bg-orange-500/30 border border-orange-500/40 text-orange-300 transition"
+                          >
+                            Upgrade for more
+                          </button>
+                        </div>
+                      )}
                     </div>
 
                     {/* Recent activity list */}
