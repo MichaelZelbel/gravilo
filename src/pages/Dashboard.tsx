@@ -462,23 +462,64 @@ const Dashboard = () => {
     setSyncing(true);
 
     try {
-      const url = `https://sohyviltwgpuslbjzqzh.supabase.co/functions/v1/sync-server?server_id=${selectedServerId}`;
+      const url = `https://sohyviltwgpuslbjzqzh.supabase.co/functions/v1/sync-server`;
       const response = await fetch(url, {
-        method: "GET",
+        method: "POST",
         headers: {
           Authorization: `Bearer ${session.access_token}`,
+          "Content-Type": "application/json",
         },
+        body: JSON.stringify({ server_id: selectedServerId }),
       });
 
-      if (response.ok) {
-        const data = await response.json();
+      const data = await response.json();
+      
+      if (response.ok && data.success) {
         console.log("Sync response:", data);
-        // Could show a toast here
+        
+        // Update local server state with new data
+        if (data.server) {
+          setServers(prev => prev.map(s => 
+            s.id === selectedServerId 
+              ? { ...s, name: data.server.name, icon_url: data.server.icon_url }
+              : s
+          ));
+          
+          // Update server overview with new data
+          setServerOverview(prev => prev ? {
+            ...prev,
+            server: {
+              ...prev.server,
+              name: data.server.name,
+              icon_url: data.server.icon_url,
+            }
+          } : null);
+        }
+        
+        // Refresh KB files
+        fetchKbFiles();
+        
+        toast({
+          title: "Server synced successfully",
+          description: data.channels?.length 
+            ? `Updated ${data.channels.length} channels` 
+            : "Server metadata updated",
+        });
       } else {
-        console.error("Sync failed");
+        console.error("Sync failed:", data);
+        toast({
+          title: "Sync failed",
+          description: data.error || "Could not sync server. Please try again.",
+          variant: "destructive",
+        });
       }
     } catch (err) {
       console.error("Sync error:", err);
+      toast({
+        title: "Sync error",
+        description: "An unexpected error occurred. Please try again.",
+        variant: "destructive",
+      });
     }
 
     setSyncing(false);
