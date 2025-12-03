@@ -44,7 +44,8 @@ serve(async (req) => {
     });
   }
 
-  const { discord_guild_id, messages = 1 } = body;
+  const { discord_guild_id, messages: rawMessages = 1 } = body;
+  const messages = Number(rawMessages);
 
   console.log(`Processing usage for guild ${discord_guild_id}: ${messages} messages`);
 
