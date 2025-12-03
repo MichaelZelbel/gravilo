@@ -1,8 +1,23 @@
 import { useEffect, useState, useRef, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { RefreshCw, Shield, Settings, FileText, Upload, Loader2, CheckCircle, AlertCircle, Clock } from "lucide-react";
+import { RefreshCw, Shield, Settings, FileText, Upload, Loader2, CheckCircle, AlertCircle, Clock, X, Hash, Volume2, MessageSquare } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+
+type Channel = {
+  discord_channel_id: string;
+  discord_channel_name: string;
+  discord_channel_type: string;
+  type: number;
+  position: number;
+  allowed: boolean;
+};
 
 type KBFile = {
   id: string;
@@ -84,6 +99,12 @@ const Dashboard = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const pollingRef = useRef<NodeJS.Timeout | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
+
+  // Active Channels state
+  const [channels, setChannels] = useState<Channel[]>([]);
+  const [channelsLoading, setChannelsLoading] = useState(false);
+  const [channelsModalOpen, setChannelsModalOpen] = useState(false);
+  const [updatingChannelId, setUpdatingChannelId] = useState<string | null>(null);
 
   useEffect(() => {
     // Check for upgrade success in URL params
@@ -309,6 +330,99 @@ const Dashboard = () => {
     }
   }, [kbFiles, serverOverview?.server?.discord_guild_id, session, fetchKbFiles]);
 
+  // Fetch channels for selected server
+  const fetchChannels = useCallback(async () => {
+    if (!selectedServerId || !session) return;
+    
+    setChannelsLoading(true);
+    
+    try {
+      const url = `https://sohyviltwgpuslbjzqzh.supabase.co/functions/v1/server-channels-list?server_id=${selectedServerId}`;
+      const response = await fetch(url, {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setChannels(data.channels || []);
+      } else {
+        console.error("Failed to fetch channels");
+        setChannels([]);
+      }
+    } catch (err) {
+      console.error("Error fetching channels:", err);
+      setChannels([]);
+    } finally {
+      setChannelsLoading(false);
+    }
+  }, [selectedServerId, session]);
+
+  // Load channels when server changes
+  useEffect(() => {
+    fetchChannels();
+  }, [fetchChannels]);
+
+  // Update channel allowed status
+  const updateChannelAllowed = async (channelId: string, allowed: boolean) => {
+    if (!selectedServerId || !session) return;
+    
+    setUpdatingChannelId(channelId);
+    
+    // Optimistically update UI
+    setChannels(prev => prev.map(ch => 
+      ch.discord_channel_id === channelId ? { ...ch, allowed } : ch
+    ));
+    
+    try {
+      const url = `https://sohyviltwgpuslbjzqzh.supabase.co/functions/v1/server-channels-update`;
+      const response = await fetch(url, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          server_id: selectedServerId,
+          discord_channel_id: channelId,
+          allowed,
+        }),
+      });
+
+      if (response.ok) {
+        toast({
+          title: allowed ? "Channel enabled" : "Channel disabled",
+          description: `Gravilo will ${allowed ? "now respond in" : "no longer respond in"} this channel.`,
+        });
+      } else {
+        // Revert on failure
+        setChannels(prev => prev.map(ch => 
+          ch.discord_channel_id === channelId ? { ...ch, allowed: !allowed } : ch
+        ));
+        toast({
+          title: "Failed to update channel",
+          description: "Please try again.",
+          variant: "destructive",
+        });
+      }
+    } catch (err) {
+      console.error("Error updating channel:", err);
+      // Revert on error
+      setChannels(prev => prev.map(ch => 
+        ch.discord_channel_id === channelId ? { ...ch, allowed: !allowed } : ch
+      ));
+      toast({
+        title: "Failed to update channel",
+        description: "Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setUpdatingChannelId(null);
+    }
+  };
+
   // Handle KB file upload
   const handleKbUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -498,6 +612,9 @@ const Dashboard = () => {
         
         // Refresh KB files
         fetchKbFiles();
+        
+        // Refresh channels
+        fetchChannels();
         
         toast({
           title: "Server synced successfully",
@@ -857,12 +974,27 @@ const Dashboard = () => {
                     )}
                   </div>
 
-                  <div className="flex justify-between items-center bg-white/5 rounded-2xl px-4 py-3 border border-white/10">
+                  <button
+                    onClick={() => setChannelsModalOpen(true)}
+                    className="w-full flex justify-between items-center bg-white/5 rounded-2xl px-4 py-3 border border-white/10 hover:bg-white/10 hover:border-white/20 transition cursor-pointer text-left"
+                  >
                     <div>
                       <p className="text-xs text-gray-400">Active Channels</p>
-                      <p className="text-lg font-semibold">—</p>
+                      {channelsLoading ? (
+                        <p className="text-lg font-semibold text-gray-400">Loading...</p>
+                      ) : channels.length === 0 ? (
+                        <p className="text-lg font-semibold text-gray-500">No channels</p>
+                      ) : (
+                        <p className="text-lg font-semibold text-[#3BFFB6]">
+                          {channels.filter(c => c.allowed).length} active
+                        </p>
+                      )}
+                      {channels.length === 0 && !channelsLoading && (
+                        <p className="text-[10px] text-gray-500 mt-0.5">Click to sync & configure</p>
+                      )}
                     </div>
-                  </div>
+                    <Settings className="h-4 w-4 text-gray-500" />
+                  </button>
 
                   <div className="flex justify-between items-center bg-white/5 rounded-2xl px-4 py-3 border border-white/10">
                     <div>
@@ -1203,6 +1335,90 @@ const Dashboard = () => {
           )}
         </div>
       </div>
+
+      {/* Active Channels Modal */}
+      <Dialog open={channelsModalOpen} onOpenChange={setChannelsModalOpen}>
+        <DialogContent className="max-w-lg bg-[#0a0f1e] border border-white/10 text-white">
+          <DialogHeader>
+            <DialogTitle className="text-lg font-semibold">
+              Active Channels for {serverOverview?.server.name || "Server"}
+            </DialogTitle>
+          </DialogHeader>
+          
+          <div className="space-y-4">
+            {/* Sync button */}
+            <div className="flex items-center justify-between">
+              <p className="text-xs text-gray-400">
+                {channels.length} channel{channels.length !== 1 ? "s" : ""} · {channels.filter(c => c.allowed).length} active
+              </p>
+              <button
+                onClick={async () => {
+                  await handleSyncServer();
+                }}
+                disabled={syncing}
+                className="inline-flex items-center gap-1.5 text-xs text-[#5865F2] hover:text-[#7983ff] transition disabled:opacity-50"
+              >
+                <RefreshCw className={`h-3 w-3 ${syncing ? "animate-spin" : ""}`} />
+                Sync from Discord
+              </button>
+            </div>
+
+            {/* Channel list */}
+            <div className="max-h-80 overflow-y-auto space-y-2">
+              {channelsLoading && channels.length === 0 ? (
+                <div className="flex items-center justify-center py-8 text-gray-400">
+                  <Loader2 className="h-5 w-5 animate-spin mr-2" />
+                  Loading channels...
+                </div>
+              ) : channels.length === 0 ? (
+                <div className="text-center py-8 text-gray-400 text-sm">
+                  <p className="mb-2">No channels found.</p>
+                  <p className="text-xs">Click "Sync from Discord" to fetch your server's channels.</p>
+                </div>
+              ) : (
+                channels
+                  .filter(ch => ch.discord_channel_type === "text" || ch.discord_channel_type === "announcement" || ch.discord_channel_type === "forum")
+                  .map((channel) => (
+                    <div
+                      key={channel.discord_channel_id}
+                      className="flex items-center justify-between bg-white/5 border border-white/10 rounded-xl px-3 py-2.5"
+                    >
+                      <div className="flex items-center gap-2 min-w-0">
+                        {channel.discord_channel_type === "text" && <Hash className="h-4 w-4 text-gray-400 flex-shrink-0" />}
+                        {channel.discord_channel_type === "announcement" && <MessageSquare className="h-4 w-4 text-gray-400 flex-shrink-0" />}
+                        {channel.discord_channel_type === "forum" && <MessageSquare className="h-4 w-4 text-gray-400 flex-shrink-0" />}
+                        {channel.discord_channel_type === "voice" && <Volume2 className="h-4 w-4 text-gray-400 flex-shrink-0" />}
+                        <div className="min-w-0">
+                          <p className="text-sm font-medium truncate">{channel.discord_channel_name}</p>
+                          <p className="text-[10px] text-gray-500 capitalize">{channel.discord_channel_type}</p>
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => updateChannelAllowed(channel.discord_channel_id, !channel.allowed)}
+                        disabled={updatingChannelId === channel.discord_channel_id}
+                        className={`relative inline-flex h-5 w-9 items-center rounded-full border border-white/15 transition ${
+                          channel.allowed ? "bg-[#22c55e]" : "bg-black/40"
+                        } ${updatingChannelId === channel.discord_channel_id ? "opacity-50" : ""}`}
+                      >
+                        <span
+                          className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition ${
+                            channel.allowed ? "translate-x-4" : "translate-x-0.5"
+                          }`}
+                        />
+                      </button>
+                    </div>
+                  ))
+              )}
+            </div>
+
+            {channels.length > 0 && channels.filter(ch => ch.discord_channel_type === "voice" || ch.discord_channel_type === "category").length > 0 && (
+              <p className="text-[10px] text-gray-500 text-center">
+                Voice channels and categories are hidden. Gravilo only responds in text channels.
+              </p>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
