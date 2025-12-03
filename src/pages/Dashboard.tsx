@@ -96,6 +96,12 @@ const Dashboard = () => {
   const [allowFunReplies, setAllowFunReplies] = useState(true);
   const [savingPrompt, setSavingPrompt] = useState(false);
   
+  // Personality Studio state
+  type PresetType = "helpful_assistant" | "sarcastic_droid" | "wise_wizard" | "genz_gamer" | "custom";
+  const [personalityPreset, setPersonalityPreset] = useState<PresetType>("helpful_assistant");
+  const [personalityLoading, setPersonalityLoading] = useState(false);
+  const [savingPersonality, setSavingPersonality] = useState(false);
+  
   // Knowledge Base state
   const [kbFiles, setKbFiles] = useState<KBFile[]>([]);
   const [kbLoading, setKbLoading] = useState(false);
@@ -272,12 +278,49 @@ const Dashboard = () => {
       // Reset chat when server changes
       setChatMessages([]);
       setChatInput("");
+      
+      // Reset personality state
+      setPersonalityPreset("helpful_assistant");
+      setCustomPrompt("");
 
       setLoadingOverview(false);
     };
 
     loadOverview();
   }, [selectedServerId, session]);
+
+  // Fetch personality when serverOverview changes (has discord_guild_id)
+  useEffect(() => {
+    const fetchPersonality = async () => {
+      if (!serverOverview?.server?.discord_guild_id || !session) return;
+      
+      setPersonalityLoading(true);
+      
+      try {
+        const url = `https://sohyviltwgpuslbjzqzh.supabase.co/functions/v1/get-personality?server_id=${serverOverview.server.discord_guild_id}`;
+        const response = await fetch(url, {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${session.access_token}`,
+          },
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          setPersonalityPreset(data.preset || "helpful_assistant");
+          setCustomPrompt(data.custom_prompt || "");
+        } else {
+          console.error("Failed to fetch personality");
+        }
+      } catch (err) {
+        console.error("Error fetching personality:", err);
+      }
+      
+      setPersonalityLoading(false);
+    };
+
+    fetchPersonality();
+  }, [serverOverview?.server?.discord_guild_id, session]);
 
   // Realtime subscription for usage updates
   useEffect(() => {
@@ -694,6 +737,71 @@ const Dashboard = () => {
     }
 
     setSavingPrompt(false);
+  };
+
+  // Update personality preset or custom prompt
+  const updatePersonality = async (preset: PresetType, customPromptValue?: string) => {
+    if (!serverOverview?.server?.discord_guild_id || !session) return;
+    
+    setSavingPersonality(true);
+    
+    try {
+      const url = `https://sohyviltwgpuslbjzqzh.supabase.co/functions/v1/update-personality`;
+      const response = await fetch(url, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          server_id: serverOverview.server.discord_guild_id,
+          preset,
+          custom_prompt: preset === "custom" ? customPromptValue : undefined,
+        }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setPersonalityPreset(data.preset);
+        if (data.preset === "custom") {
+          setCustomPrompt(data.custom_prompt || "");
+        }
+        toast({
+          title: "Saved",
+          description: "Personality updated successfully.",
+        });
+      } else {
+        console.error("Failed to update personality");
+        toast({
+          title: "Error",
+          description: "Failed to save personality. Please try again.",
+          variant: "destructive",
+        });
+      }
+    } catch (err) {
+      console.error("Error updating personality:", err);
+      toast({
+        title: "Error",
+        description: "Failed to save personality. Please try again.",
+        variant: "destructive",
+      });
+    }
+    
+    setSavingPersonality(false);
+  };
+
+  // Handle preset button click
+  const handlePresetClick = (preset: PresetType) => {
+    setPersonalityPreset(preset);
+    if (preset !== "custom") {
+      setCustomPrompt("");
+    }
+    updatePersonality(preset, preset === "custom" ? customPrompt : undefined);
+  };
+
+  // Handle custom prompt save
+  const handleSaveCustomPrompt = () => {
+    updatePersonality("custom", customPrompt);
   };
 
   const handleSyncServer = async () => {
@@ -1287,36 +1395,62 @@ const Dashboard = () => {
 
                   {serverPlan === "premium" ? (
                     <>
-                      {/* Preset grid */}
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-5">
-                        {[
-                          { label: "Helpful Assistant", desc: "Friendly & helpful tone" },
-                          { label: "Sarcastic Droid", desc: "Dry humor & sarcasm" },
-                          { label: "Wise Wizard", desc: "Calm & wise answers" },
-                          { label: "Gen Z Gamer", desc: "Hype, slang, and memes" }
-                        ].map((preset, idx) => (
-                          <button
-                            key={preset.label}
-                            className={`rounded-2xl px-3 py-3 text-xs text-left bg-white/5 border ${
-                              idx === 3 ? "border-[#3BFFB6]/60 shadow-[0_0_20px_rgba(59,255,182,0.5)]" : "border-white/10"
-                            } hover:bg-white/10 transition`}
-                          >
-                            <div className="mb-1 font-semibold">{preset.label}</div>
-                            <div className="text-[10px] text-gray-400">{preset.desc}</div>
-                          </button>
-                        ))}
-                      </div>
+                      {/* Loading state */}
+                      {personalityLoading ? (
+                        <div className="flex items-center justify-center py-8">
+                          <div className="h-6 w-6 rounded-full border-2 border-[#5865F2] border-t-transparent animate-spin"></div>
+                          <span className="ml-2 text-sm text-gray-400">Loading personality...</span>
+                        </div>
+                      ) : (
+                        <>
+                          {/* Preset grid */}
+                          <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-5">
+                            {[
+                              { key: "helpful_assistant", label: "Helpful Assistant", desc: "Friendly & helpful tone" },
+                              { key: "sarcastic_droid", label: "Sarcastic Droid", desc: "Dry humor & sarcasm" },
+                              { key: "wise_wizard", label: "Wise Wizard", desc: "Calm & wise answers" },
+                              { key: "genz_gamer", label: "Gen Z Gamer", desc: "Hype, slang, and memes" },
+                              { key: "custom", label: "Custom", desc: "Write your own prompt" }
+                            ].map((preset) => (
+                              <button
+                                key={preset.key}
+                                onClick={() => handlePresetClick(preset.key as PresetType)}
+                                disabled={savingPersonality}
+                                className={`rounded-2xl px-3 py-3 text-xs text-left bg-white/5 border ${
+                                  personalityPreset === preset.key 
+                                    ? "border-[#3BFFB6]/60 shadow-[0_0_20px_rgba(59,255,182,0.5)]" 
+                                    : "border-white/10"
+                                } hover:bg-white/10 transition disabled:opacity-50`}
+                              >
+                                <div className="mb-1 font-semibold">{preset.label}</div>
+                                <div className="text-[10px] text-gray-400">{preset.desc}</div>
+                              </button>
+                            ))}
+                          </div>
 
-                      {/* Custom prompt */}
-                      <div className="space-y-2">
-                        <label className="text-xs text-gray-300">Custom Personality Prompt</label>
-                        <textarea
-                          value={customPrompt}
-                          onChange={(e) => setCustomPrompt(e.target.value)}
-                          className="w-full h-28 bg-black/30 border border-white/15 rounded-2xl px-3 py-3 text-xs text-gray-100 resize-none outline-none focus:border-[#A855F7] focus:ring-1 focus:ring-[#A855F7]"
-                          placeholder="You are Gravilo, a nerdy developer buddy for the Antigravity community. Use slang and gaming references."
-                        />
-                      </div>
+                          {/* Custom prompt - only shown when custom preset is selected */}
+                          {personalityPreset === "custom" && (
+                            <div className="space-y-2 mb-5">
+                              <label className="text-xs text-gray-300">Custom Personality Prompt</label>
+                              <textarea
+                                value={customPrompt}
+                                onChange={(e) => setCustomPrompt(e.target.value)}
+                                className="w-full h-28 bg-black/30 border border-white/15 rounded-2xl px-3 py-3 text-xs text-gray-100 resize-none outline-none focus:border-[#A855F7] focus:ring-1 focus:ring-[#A855F7]"
+                                placeholder="You are Gravilo, a nerdy developer buddy for the Antigravity community. Use slang and gaming references."
+                              />
+                              <div className="flex justify-end">
+                                <button 
+                                  onClick={handleSaveCustomPrompt}
+                                  disabled={savingPersonality}
+                                  className="text-xs px-4 py-2 rounded-full bg-[#5865F2] hover:bg-[#6b74ff] disabled:opacity-50 shadow-[0_0_18px_rgba(88,101,242,0.7)] transition"
+                                >
+                                  {savingPersonality ? "Saving..." : "Save Custom Prompt"}
+                                </button>
+                              </div>
+                            </div>
+                          )}
+                        </>
+                      )}
 
                       {/* Behavior & Safety Section */}
                       <div className="mt-5 pt-5 border-t border-white/10">
@@ -1406,7 +1540,11 @@ const Dashboard = () => {
                       </div>
 
                       <div className="flex justify-end gap-3 mt-5">
-                        <button className="text-xs px-4 py-2 rounded-full bg-white/5 hover:bg-white/10 border border-white/20">
+                        <button 
+                          onClick={() => handlePresetClick("helpful_assistant")}
+                          disabled={savingPersonality || personalityPreset === "helpful_assistant"}
+                          className="text-xs px-4 py-2 rounded-full bg-white/5 hover:bg-white/10 border border-white/20 disabled:opacity-50"
+                        >
                           Reset to Default
                         </button>
                         <button 
@@ -1421,12 +1559,13 @@ const Dashboard = () => {
                   ) : (
                     <div className="relative">
                       <div className="opacity-40 pointer-events-none">
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-5">
+                        <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-5">
                           {[
                             { label: "Helpful Assistant", desc: "Friendly & helpful tone" },
                             { label: "Sarcastic Droid", desc: "Dry humor & sarcasm" },
                             { label: "Wise Wizard", desc: "Calm & wise answers" },
-                            { label: "Gen Z Gamer", desc: "Hype, slang, and memes" }
+                            { label: "Gen Z Gamer", desc: "Hype, slang, and memes" },
+                            { label: "Custom", desc: "Write your own prompt" }
                           ].map((preset) => (
                             <div
                               key={preset.label}
