@@ -38,3 +38,6 @@ verify_jwt = true
 
 [functions.kb-delete]
 verify_jwt = true
+
+[functions.kb-ingestion-complete]
+verify_jwt = false  # Public endpoint - authenticated via x-n8n-secret header
