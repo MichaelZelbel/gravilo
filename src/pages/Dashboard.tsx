@@ -144,58 +144,22 @@ const Dashboard = () => {
       
       setIsAdmin(!!adminRole);
 
-      // Get the user's discord_user_id for server filtering
-      const userDiscordId = userRow?.discord_user_id || discordUserId;
+      // Fetch servers owned by this user directly via owner_id
+      const { data: serversData, error: serversError } = await supabase
+        .from("servers")
+        .select("id, name, icon_url, discord_guild_id, bot_nickname, message_usage_current_cycle, message_limit, cycle_start, cycle_end, active")
+        .eq("owner_id", session.user.id)
+        .order("active", { ascending: false })
+        .order("name", { ascending: true });
 
-      if (userDiscordId) {
-        // Auto-claim servers: find servers where owner_discord_id matches and upsert into user_servers
-        const { data: ownedServers } = await supabase
-          .from("servers")
-          .select("discord_guild_id")
-          .eq("owner_discord_id", userDiscordId);
-
-        if (ownedServers && ownedServers.length > 0) {
-          const mappings = ownedServers.map(s => ({
-            discord_user_id: userDiscordId,
-            discord_server_id: s.discord_guild_id,
-          }));
-          
-          // Upsert mappings (ignore duplicates)
-          await supabase
-            .from("user_servers")
-            .upsert(mappings, { onConflict: "discord_user_id,discord_server_id", ignoreDuplicates: true });
-        }
-
-        // Fetch servers the user has access to via user_servers
-        const { data: userServerMappings } = await supabase
-          .from("user_servers")
-          .select("discord_server_id")
-          .eq("discord_user_id", userDiscordId);
-
-        if (userServerMappings && userServerMappings.length > 0) {
-          const serverIds = userServerMappings.map(m => m.discord_server_id);
-          
-          const { data: serversData, error: serversError } = await supabase
-            .from("servers")
-            .select("id, name, icon_url, discord_guild_id, bot_nickname, message_usage_current_cycle, message_limit, cycle_start, cycle_end, active")
-            .in("discord_guild_id", serverIds)
-            .order("active", { ascending: false })
-            .order("name", { ascending: true });
-
-          if (serversError) {
-            console.error("Error loading servers", serversError);
-          } else {
-            setServers(serversData || []);
-            if (serversData && serversData.length > 0) {
-              setSelectedServerId(serversData[0].id);
-            }
-          }
-        } else {
-          setServers([]);
-        }
-      } else {
-        // No discord_user_id, show empty state
+      if (serversError) {
+        console.error("Error loading servers", serversError);
         setServers([]);
+      } else {
+        setServers(serversData || []);
+        if (serversData && serversData.length > 0) {
+          setSelectedServerId(serversData[0].id);
+        }
       }
 
       setLoading(false);
