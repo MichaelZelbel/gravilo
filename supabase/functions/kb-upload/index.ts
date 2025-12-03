@@ -96,7 +96,7 @@ serve(async (req) => {
       );
     }
 
-    // Insert metadata
+    // Insert metadata with status 'uploaded'
     const { data: metaData, error: metaError } = await supabaseClient
       .from("server_kb_files")
       .insert({
@@ -120,6 +120,75 @@ serve(async (req) => {
     }
 
     console.log(`File uploaded: ${file.name} -> ${filePath}`);
+
+    // Call n8n ingestion webhook
+    const n8nWebhookUrl = Deno.env.get("N8N_INGESTION_WEBHOOK_URL");
+    
+    if (n8nWebhookUrl) {
+      try {
+        const webhookPayload = {
+          file_id: metaData.id,
+          file_name: file.name,
+          file_path: filePath,
+          discord_server_id: discordServerId,
+          supabase_bucket: "kb-files",
+          mime_type: file.type || "application/octet-stream"
+        };
+
+        console.log(`Calling n8n webhook for file ${metaData.id}:`, webhookPayload);
+
+        const webhookResponse = await fetch(n8nWebhookUrl, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify(webhookPayload)
+        });
+
+        // Create admin client to update status (bypasses RLS)
+        const supabaseAdmin = createClient(
+          Deno.env.get("SUPABASE_URL") ?? "",
+          Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
+        );
+
+        if (webhookResponse.ok) {
+          // Webhook succeeded - update status to 'indexing'
+          console.log(`n8n webhook returned ${webhookResponse.status}, setting status to 'indexing'`);
+          await supabaseAdmin
+            .from("server_kb_files")
+            .update({ status: "indexing" })
+            .eq("id", metaData.id);
+          
+          metaData.status = "indexing";
+        } else {
+          // Webhook failed - update status to 'error'
+          console.error(`n8n webhook returned ${webhookResponse.status}: ${await webhookResponse.text()}`);
+          await supabaseAdmin
+            .from("server_kb_files")
+            .update({ status: "error" })
+            .eq("id", metaData.id);
+          
+          metaData.status = "error";
+        }
+      } catch (webhookError) {
+        // Webhook call failed - update status to 'error'
+        console.error("n8n webhook call failed:", webhookError);
+        
+        const supabaseAdmin = createClient(
+          Deno.env.get("SUPABASE_URL") ?? "",
+          Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
+        );
+        
+        await supabaseAdmin
+          .from("server_kb_files")
+          .update({ status: "error" })
+          .eq("id", metaData.id);
+        
+        metaData.status = "error";
+      }
+    } else {
+      console.warn("N8N_INGESTION_WEBHOOK_URL not configured, skipping webhook call");
+    }
 
     return new Response(
       JSON.stringify({ success: true, file: metaData }),
