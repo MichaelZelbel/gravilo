@@ -39,11 +39,11 @@ serve(async (req) => {
       });
     }
 
-    // Parse request body
-    const { discord_server_id, question } = await req.json();
+    // Parse request body - accept server_id (discord_guild_id), query, channel_name
+    const { server_id, query, channel_name } = await req.json();
 
-    if (!discord_server_id || !question) {
-      return new Response(JSON.stringify({ error: "Missing discord_server_id or question" }), {
+    if (!server_id || !query) {
+      return new Response(JSON.stringify({ error: "Missing server_id or query" }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -69,7 +69,7 @@ serve(async (req) => {
       .from("user_servers")
       .select("id")
       .eq("discord_user_id", userData.discord_user_id)
-      .eq("discord_server_id", discord_server_id)
+      .eq("discord_server_id", server_id)
       .maybeSingle();
 
     // Also check if user owns the server directly via servers table
@@ -77,11 +77,11 @@ serve(async (req) => {
       .from("servers")
       .select("id")
       .eq("owner_id", user.id)
-      .eq("discord_guild_id", discord_server_id)
+      .eq("discord_guild_id", server_id)
       .maybeSingle();
 
     if ((accessError && ownedError) || (!serverAccess && !ownedServer)) {
-      console.log("Access denied for user", user.id, "to server", discord_server_id);
+      console.log("Access denied for user", user.id, "to server", server_id);
       return new Response(JSON.stringify({ error: "Access denied to this server" }), {
         status: 403,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -98,15 +98,16 @@ serve(async (req) => {
       });
     }
 
-    // Build payload for n8n
+    // Build payload for n8n - matches expected format from Webhook node
+    // The n8n Config node maps: content, supabase_user_id, channel_name, server_id
     const n8nPayload = {
-      discord_server_id,
-      question,
-      source: "dashboard",
+      content: query,
       supabase_user_id: user.id,
+      channel_name: channel_name || "dashboard",
+      server_id: server_id,
     };
 
-    console.log("Calling n8n chat webhook for server:", discord_server_id);
+    console.log("Calling n8n chat webhook for server:", server_id, "channel:", channel_name);
 
     // Send request to n8n
     const n8nResponse = await fetch(n8nChatWebhookUrl, {
@@ -126,11 +127,12 @@ serve(async (req) => {
       });
     }
 
-    const n8nData = await n8nResponse.json();
-    console.log("n8n response received");
+    // n8n returns plain text from Respond to Webhook node (responseBody = {{$json.output}})
+    const answerText = await n8nResponse.text();
+    console.log("n8n response received, length:", answerText.length);
 
-    // Return the answer
-    return new Response(JSON.stringify({ answer: n8nData.answer || "No response from Gravilo" }), {
+    // Return the answer wrapped in JSON for frontend
+    return new Response(JSON.stringify({ answer: answerText || "No response from Gravilo" }), {
       status: 200,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });

@@ -774,8 +774,9 @@ const Dashboard = () => {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          discord_server_id: serverOverview.server.discord_guild_id,
-          question: userMessage,
+          server_id: serverOverview.server.discord_guild_id,
+          query: userMessage,
+          channel_name: "dashboard",
         }),
       });
 
