@@ -14,6 +14,53 @@ export type Database = {
   }
   public: {
     Tables: {
+      server_channels: {
+        Row: {
+          created_at: string | null
+          discord_guild_id: string
+          id: string
+          name: string
+          nsfw: boolean | null
+          parent_id: string | null
+          position: number | null
+          server_id: string | null
+          type: number
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          discord_guild_id: string
+          id: string
+          name: string
+          nsfw?: boolean | null
+          parent_id?: string | null
+          position?: number | null
+          server_id?: string | null
+          type: number
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          discord_guild_id?: string
+          id?: string
+          name?: string
+          nsfw?: boolean | null
+          parent_id?: string | null
+          position?: number | null
+          server_id?: string | null
+          type?: number
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "server_channels_server_id_fkey"
+            columns: ["server_id"]
+            isOneToOne: false
+            referencedRelation: "servers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       server_kb_files: {
         Row: {
           created_at: string | null
