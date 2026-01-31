@@ -14,6 +14,24 @@ export type Database = {
   }
   public: {
     Tables: {
+      ai_credit_settings: {
+        Row: {
+          description: string | null
+          key: string
+          value_int: number
+        }
+        Insert: {
+          description?: string | null
+          key: string
+          value_int: number
+        }
+        Update: {
+          description?: string | null
+          key?: string
+          value_int?: number
+        }
+        Relationships: []
+      }
       server_activity: {
         Row: {
           channel_name: string | null
@@ -260,6 +278,99 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      server_token_allowances: {
+        Row: {
+          created_at: string | null
+          id: string
+          metadata: Json | null
+          period_end: string
+          period_start: string
+          server_id: string
+          source: string | null
+          tokens_granted: number | null
+          tokens_used: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          metadata?: Json | null
+          period_end: string
+          period_start: string
+          server_id: string
+          source?: string | null
+          tokens_granted?: number | null
+          tokens_used?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          metadata?: Json | null
+          period_end?: string
+          period_start?: string
+          server_id?: string
+          source?: string | null
+          tokens_granted?: number | null
+          tokens_used?: number | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      server_token_events: {
+        Row: {
+          channel_name: string | null
+          completion_tokens: number | null
+          created_at: string | null
+          credits_charged: number | null
+          discord_user_id: string | null
+          feature: string | null
+          id: string
+          idempotency_key: string
+          metadata: Json | null
+          model: string | null
+          prompt_tokens: number | null
+          provider: string | null
+          server_id: string
+          total_tokens: number | null
+          user_id: string | null
+        }
+        Insert: {
+          channel_name?: string | null
+          completion_tokens?: number | null
+          created_at?: string | null
+          credits_charged?: number | null
+          discord_user_id?: string | null
+          feature?: string | null
+          id?: string
+          idempotency_key: string
+          metadata?: Json | null
+          model?: string | null
+          prompt_tokens?: number | null
+          provider?: string | null
+          server_id: string
+          total_tokens?: number | null
+          user_id?: string | null
+        }
+        Update: {
+          channel_name?: string | null
+          completion_tokens?: number | null
+          created_at?: string | null
+          credits_charged?: number | null
+          discord_user_id?: string | null
+          feature?: string | null
+          id?: string
+          idempotency_key?: string
+          metadata?: Json | null
+          model?: string | null
+          prompt_tokens?: number | null
+          provider?: string | null
+          server_id?: string
+          total_tokens?: number | null
+          user_id?: string | null
+        }
+        Relationships: []
       }
       server_usage: {
         Row: {
