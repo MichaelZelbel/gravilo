@@ -1,7 +1,9 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Shield, Users, Crown, UserCheck, Trash2 } from "lucide-react";
+import { Shield, Users, Crown, UserCheck, Trash2, Coins, Save, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 
 type User = {
   id: string;
@@ -18,12 +20,27 @@ type UserRole = {
   created_at: string;
 };
 
+type CreditSetting = {
+  key: string;
+  value_int: number;
+  description: string | null;
+};
+
+const SETTING_LABELS: Record<string, string> = {
+  tokens_per_credit: "Tokens per Credit",
+  tokens_free_per_month: "Free Tier Monthly Tokens",
+  tokens_premium_per_month: "Premium Tier Monthly Tokens",
+};
+
 const Admin = () => {
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
   const [users, setUsers] = useState<User[]>([]);
   const [userRoles, setUserRoles] = useState<Record<string, UserRole[]>>({});
   const [updating, setUpdating] = useState<string | null>(null);
+  const [creditSettings, setCreditSettings] = useState<CreditSetting[]>([]);
+  const [editedSettings, setEditedSettings] = useState<Record<string, number>>({});
+  const [savingSettings, setSavingSettings] = useState<Record<string, boolean>>({});
   const { toast } = useToast();
 
   useEffect(() => {
@@ -80,11 +97,60 @@ const Admin = () => {
         setUserRoles(grouped);
       }
 
+      // Fetch credit settings
+      const { data: settingsData, error: settingsError } = await supabase
+        .from("ai_credit_settings")
+        .select("key, value_int, description");
+
+      if (settingsError) {
+        console.error("Error fetching credit settings:", settingsError);
+      } else {
+        setCreditSettings(settingsData || []);
+        // Initialize edited values
+        const initial: Record<string, number> = {};
+        (settingsData || []).forEach((s) => {
+          initial[s.key] = s.value_int;
+        });
+        setEditedSettings(initial);
+      }
+
       setLoading(false);
     };
 
     init();
   }, []);
+
+  const handleSettingChange = (key: string, value: string) => {
+    const numValue = parseInt(value, 10);
+    if (!isNaN(numValue) && numValue >= 0) {
+      setEditedSettings((prev) => ({ ...prev, [key]: numValue }));
+    }
+  };
+
+  const saveSetting = async (key: string) => {
+    setSavingSettings((prev) => ({ ...prev, [key]: true }));
+    
+    const { error } = await supabase
+      .from("ai_credit_settings")
+      .update({ value_int: editedSettings[key] })
+      .eq("key", key);
+
+    if (error) {
+      toast({ title: "Error", description: `Failed to update ${key}`, variant: "destructive" });
+    } else {
+      setCreditSettings((prev) =>
+        prev.map((s) => (s.key === key ? { ...s, value_int: editedSettings[key] } : s))
+      );
+      toast({ title: "Success", description: `${SETTING_LABELS[key] || key} updated` });
+    }
+
+    setSavingSettings((prev) => ({ ...prev, [key]: false }));
+  };
+
+  const isSettingModified = (key: string) => {
+    const original = creditSettings.find((s) => s.key === key);
+    return original && original.value_int !== editedSettings[key];
+  };
 
   const updateUserPlan = async (userId: string, newPlan: string) => {
     setUpdating(userId);
@@ -338,6 +404,67 @@ const Admin = () => {
                   ))}
                 </tbody>
               </table>
+            </div>
+          </div>
+
+          {/* AI Credit Settings */}
+          <div className="backdrop-blur-xl bg-white/5 border border-white/10 rounded-2xl overflow-hidden">
+            <div className="px-6 py-4 border-b border-white/10 flex items-center gap-3">
+              <Coins className="h-5 w-5 text-[#3BFFB6]" />
+              <h2 className="text-lg font-semibold">AI Credit Settings</h2>
+            </div>
+            <div className="p-6 space-y-6">
+              {creditSettings.length === 0 ? (
+                <p className="text-gray-400 text-sm">No credit settings found.</p>
+              ) : (
+                creditSettings.map((setting) => (
+                  <div
+                    key={setting.key}
+                    className="flex flex-col sm:flex-row sm:items-center gap-4 p-4 rounded-xl bg-white/5 border border-white/10"
+                  >
+                    <div className="flex-1 min-w-0">
+                      <label className="block text-sm font-medium text-gray-200 mb-1">
+                        {SETTING_LABELS[setting.key] || setting.key}
+                      </label>
+                      {setting.description && (
+                        <p className="text-xs text-gray-400">{setting.description}</p>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <Input
+                        type="number"
+                        min={0}
+                        value={editedSettings[setting.key] ?? setting.value_int}
+                        onChange={(e) => handleSettingChange(setting.key, e.target.value)}
+                        className="w-36 bg-white/5 border-white/20 text-gray-200"
+                      />
+                      <Button
+                        onClick={() => saveSetting(setting.key)}
+                        disabled={!isSettingModified(setting.key) || savingSettings[setting.key]}
+                        size="sm"
+                        variant={isSettingModified(setting.key) ? "default" : "secondary"}
+                        className={isSettingModified(setting.key) 
+                          ? "bg-[#3BFFB6] hover:bg-[#2ee8a5] text-black" 
+                          : "bg-white/10 text-gray-400"
+                        }
+                      >
+                        {savingSettings[setting.key] ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <Save className="h-4 w-4" />
+                        )}
+                      </Button>
+                    </div>
+                  </div>
+                ))
+              )}
+              
+              <div className="mt-4 p-4 rounded-xl bg-yellow-500/10 border border-yellow-500/20">
+                <p className="text-xs text-yellow-300">
+                  <strong>Note:</strong> Changes take effect immediately for all new credit calculations. 
+                  Existing allowance periods will use the new settings when calculating remaining credits.
+                </p>
+              </div>
             </div>
           </div>
         </div>
