@@ -1,6 +1,8 @@
 import { useEffect, useState, useRef, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { RefreshCw, Shield, Settings, FileText, Upload, Loader2, CheckCircle, AlertCircle, Clock, X, Hash, Volume2, MessageSquare, Trash2, Send, Maximize2, Bot, User } from "lucide-react";
+import { ServerTokenDisplay } from "@/components/dashboard/ServerTokenDisplay";
+import { useServerTokens } from "@/hooks/useServerTokens";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -1283,89 +1285,12 @@ const Dashboard = () => {
                   <div className="pointer-events-none absolute inset-x-10 -top-16 h-32 bg-gradient-to-r from-[#5865F2]/40 via-[#3BFFB6]/30 to-[#A855F7]/40 blur-3xl opacity-70" />
 
                   <div className="relative z-10 flex flex-col lg:flex-row gap-8">
-                    {/* Circular usage */}
-                    <div className="flex-1 flex flex-col items-center justify-center">
-                      <div className="relative h-40 w-40">
-                        {/* Background ring */}
-                        <svg className="h-40 w-40 transform -rotate-90">
-                          <circle
-                            cx="80"
-                            cy="80"
-                            r="72"
-                            stroke="rgba(255,255,255,0.1)"
-                            strokeWidth="12"
-                            fill="none"
-                          />
-                          <circle
-                            cx="80"
-                            cy="80"
-                            r="72"
-                            stroke={isCritical || isAtLimit ? "url(#usageGradientRed)" : isWarning ? "url(#usageGradientOrange)" : "url(#usageGradient)"}
-                            strokeWidth="12"
-                            fill="none"
-                            strokeLinecap="round"
-                            strokeDasharray={`${(usagePercent / 100) * 452} 452`}
-                          />
-                          <defs>
-                            <linearGradient id="usageGradient" x1="0%" y1="0%" x2="100%" y2="0%">
-                              <stop offset="0%" stopColor="#5865F2" />
-                              <stop offset="100%" stopColor="#A855F7" />
-                            </linearGradient>
-                            <linearGradient id="usageGradientOrange" x1="0%" y1="0%" x2="100%" y2="0%">
-                              <stop offset="0%" stopColor="#F59E0B" />
-                              <stop offset="100%" stopColor="#EF4444" />
-                            </linearGradient>
-                            <linearGradient id="usageGradientRed" x1="0%" y1="0%" x2="100%" y2="0%">
-                              <stop offset="0%" stopColor="#EF4444" />
-                              <stop offset="100%" stopColor="#DC2626" />
-                            </linearGradient>
-                          </defs>
-                        </svg>
-                        <div className="absolute inset-0 flex flex-col items-center justify-center">
-                          <span className="text-xs uppercase tracking-wide text-gray-400 mb-1">
-                            Current Usage
-                          </span>
-                          <span className={`text-2xl font-semibold ${isCritical || isAtLimit ? "text-red-400" : isWarning ? "text-orange-400" : ""}`}>
-                            {usage.toLocaleString()} / {limit.toLocaleString()}
-                          </span>
-                          <span className={`text-sm font-medium mt-1 ${isCritical || isAtLimit ? "text-red-400" : isWarning ? "text-orange-400" : "text-gray-300"}`}>
-                            {Math.round(usagePercent)}%
-                          </span>
-                          <span className="text-xs text-gray-400 mt-1">Resets {cycleEndFormatted}</span>
-                        </div>
-                      </div>
-                      
-                      {/* Limit reached warning */}
-                      {isAtLimit && (
-                        <div className="mt-4 text-center">
-                          <p className="text-sm text-red-400 font-medium mb-2">
-                            Limit reached – Gravilo won't reply until reset
-                          </p>
-                          {serverPlan !== "premium" && (
-                            <button
-                              onClick={handleUpgrade}
-                              className="text-xs px-4 py-2 rounded-full bg-gradient-to-r from-red-500 to-orange-500 hover:from-red-600 hover:to-orange-600 shadow-[0_0_18px_rgba(239,68,68,0.5)] transition"
-                            >
-                              Upgrade to increase limit
-                            </button>
-                          )}
-                        </div>
-                      )}
-                      
-                      {/* Near limit warning */}
-                      {isWarning && !isAtLimit && serverPlan !== "premium" && (
-                        <div className="mt-4 text-center">
-                          <p className="text-xs text-orange-400 mb-1">
-                            Running low on messages – Consider upgrading to Premium
-                          </p>
-                          <button
-                            onClick={handleUpgrade}
-                            className="text-xs px-3 py-1.5 rounded-full bg-orange-500/20 hover:bg-orange-500/30 border border-orange-500/40 text-orange-300 transition"
-                          >
-                            Upgrade for more
-                          </button>
-                        </div>
-                      )}
+                    {/* AI Credits Display */}
+                    <div className="flex-1">
+                      <ServerTokenDisplay 
+                        serverId={serverOverview?.server?.discord_guild_id || null}
+                        onUpgrade={handleUpgrade}
+                      />
                     </div>
 
                     {/* Recent activity list */}
