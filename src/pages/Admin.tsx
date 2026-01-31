@@ -4,6 +4,7 @@ import { Shield, Users, Crown, UserCheck, Trash2, Coins, Save, Loader2 } from "l
 import { useToast } from "@/hooks/use-toast";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { ServerTokenManagement } from "@/components/admin/ServerTokenManagement";
 
 type User = {
   id: string;
@@ -467,6 +468,9 @@ const Admin = () => {
               </div>
             </div>
           </div>
+
+          {/* Server Token Management */}
+          <ServerTokenManagement />
         </div>
       </div>
     </div>
