@@ -1,8 +1,9 @@
 import { useEffect, useState, useRef, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { RefreshCw, Shield, Settings, FileText, Upload, Loader2, CheckCircle, AlertCircle, Clock, X, Hash, Volume2, MessageSquare, Trash2, Send, Maximize2, Bot, User } from "lucide-react";
+import { RefreshCw, Shield, Settings, FileText, Upload, Loader2, CheckCircle, AlertCircle, Clock, X, Hash, Volume2, MessageSquare, Trash2, Send, Maximize2, Bot, User, Coins } from "lucide-react";
 import { ServerTokenDisplay } from "@/components/dashboard/ServerTokenDisplay";
 import { useServerTokens } from "@/hooks/useServerTokens";
+import { useServerTokenGate } from "@/hooks/useServerTokenGate";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -975,9 +976,17 @@ const Dashboard = () => {
     setRefreshingUsage(false);
   };
 
+  // Token gating for chat
+  const { checkTokens, refetchTokens, tokens: tokenGateTokens } = useServerTokenGate(serverOverview?.server?.discord_guild_id || null);
+
   // Send chat message to Gravilo
   const sendChatMessage = async () => {
     if (!chatInput.trim() || !serverOverview?.server?.discord_guild_id || !session || chatLoading) return;
+    
+    // Check token allowance before sending
+    if (!checkTokens()) {
+      return;
+    }
     
     const userMessage = chatInput.trim();
     setChatInput("");
@@ -1002,8 +1011,19 @@ const Dashboard = () => {
       if (response.ok) {
         const data = await response.json();
         setChatMessages(prev => [...prev, { role: "assistant", content: data.answer || "No response" }]);
-        // Refresh activity after successful chat
+        // Refresh activity and tokens after successful chat
         setTimeout(() => fetchActivity(), 500);
+        refetchTokens();
+      } else if (response.status === 402) {
+        // Credit limit reached
+        const errorData = await response.json().catch(() => ({}));
+        toast({
+          title: "AI Credit Limit Reached",
+          description: errorData.message || "This server has reached its AI credit limit.",
+          variant: "destructive",
+        });
+        setChatMessages(prev => prev.slice(0, -1));
+        refetchTokens();
       } else {
         const errorData = await response.json().catch(() => ({}));
         console.error("Chat error:", errorData);
@@ -1710,6 +1730,19 @@ const Dashboard = () => {
                       <Send className="h-4 w-4" />
                     </button>
                   </div>
+
+                  {/* Credits remaining footer */}
+                  {tokenGateTokens && (
+                    <div className="mt-3 flex items-center justify-center gap-2 text-xs text-gray-400">
+                      <Coins className="h-3 w-3" />
+                      <span>
+                        {tokenGateTokens.creditsRemaining.toLocaleString()} credits remaining
+                        {tokenGateTokens.atLimit && (
+                          <span className="text-red-400 ml-1">• Limit reached</span>
+                        )}
+                      </span>
+                    </div>
+                  )}
                 </div>
 
                 {/* Knowledge Base - left side, second row */}
@@ -2043,6 +2076,19 @@ const Dashboard = () => {
               <span className="text-sm">Send</span>
             </button>
           </div>
+
+          {/* Credits remaining footer */}
+          {tokenGateTokens && (
+            <div className="mt-3 flex items-center justify-center gap-2 text-xs text-gray-400">
+              <Coins className="h-3 w-3" />
+              <span>
+                {tokenGateTokens.creditsRemaining.toLocaleString()} credits remaining
+                {tokenGateTokens.atLimit && (
+                  <span className="text-red-400 ml-1">• Limit reached</span>
+                )}
+              </span>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
     </div>
