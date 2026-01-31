@@ -65,3 +65,6 @@ verify_jwt = true
 
 [functions.ensure-server-token-allowance]
 verify_jwt = false  # Auth validated inside - supports service role for batch init
+
+[functions.log-server-token-usage]
+verify_jwt = false  # Auth validated inside - accepts x-bot-secret or JWT
