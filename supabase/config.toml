@@ -62,3 +62,6 @@ verify_jwt = true
 
 [functions.get-server-activity]
 verify_jwt = true
+
+[functions.ensure-server-token-allowance]
+verify_jwt = false  # Auth validated inside - supports service role for batch init
