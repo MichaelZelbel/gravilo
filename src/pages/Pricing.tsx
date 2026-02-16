@@ -2,10 +2,12 @@ import Navigation from "@/components/Navigation";
 import Footer from "@/components/Footer";
 import { Button } from "@/components/ui/button";
 import { Check } from "lucide-react";
+import SEOHead from "@/components/seo/SEOHead";
 
 const Pricing = () => {
   return (
     <div className="min-h-screen bg-background grid-bg relative overflow-hidden">
+      <SEOHead title="Pricing - Gravilo" description="Simple, fair pricing for every Discord community. Free, Premium, and Enterprise plans available." />
       {/* Ambient background gradients */}
       <div className="fixed inset-0 pointer-events-none">
         <div className="absolute top-0 left-1/4 w-96 h-96 bg-primary/10 rounded-full blur-3xl" />

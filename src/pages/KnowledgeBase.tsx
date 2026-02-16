@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Upload, Trash2, FileText, Image, File, ArrowLeft, Loader2 } from "lucide-react";
+import SEOHead from "@/components/seo/SEOHead";
 import { useNavigate, useSearchParams } from "react-router-dom";
 
 type KBFile = {
@@ -267,6 +268,7 @@ const KnowledgeBase = () => {
 
   return (
     <div className="min-h-screen bg-[#050814] text-white">
+      <SEOHead title="Knowledge Base - Gravilo" noIndex />
       <div className="relative min-h-screen overflow-hidden">
         {/* Background */}
         <div className="pointer-events-none absolute inset-0 opacity-40 bg-[radial-gradient(circle_at_top,_rgba(88,101,242,0.3),_transparent_55%),radial-gradient(circle_at_bottom,_rgba(59,255,182,0.2),_transparent_60%)]" />

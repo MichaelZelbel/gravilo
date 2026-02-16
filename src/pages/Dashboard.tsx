@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { RefreshCw, Shield, Settings, FileText, Upload, Loader2, CheckCircle, AlertCircle, Clock, X, Hash, Volume2, MessageSquare, Trash2, Send, Maximize2, Bot, User, Coins } from "lucide-react";
+import SEOHead from "@/components/seo/SEOHead";
 import { ServerTokenDisplay } from "@/components/dashboard/ServerTokenDisplay";
 import { useServerTokens } from "@/hooks/useServerTokens";
 import { useServerTokenGate } from "@/hooks/useServerTokenGate";
@@ -1126,6 +1127,7 @@ const Dashboard = () => {
 
   return (
     <div className="min-h-screen bg-[#050814] text-white">
+      <SEOHead title="Dashboard - Gravilo" noIndex />
       <div className="relative min-h-screen overflow-hidden">
         {/* Subtle grid / space background */}
         <div className="pointer-events-none absolute inset-0 opacity-40 bg-[radial-gradient(circle_at_top,_rgba(88,101,242,0.3),_transparent_55%),radial-gradient(circle_at_bottom,_rgba(59,255,182,0.2),_transparent_60%)]" />
