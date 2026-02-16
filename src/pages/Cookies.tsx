@@ -3,6 +3,7 @@ import { Printer } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Navigation from "@/components/Navigation";
 import Footer from "@/components/Footer";
+import SEOHead from "@/components/seo/SEOHead";
 
 const Cookies = () => {
   const handlePrint = () => {
@@ -18,6 +19,7 @@ const Cookies = () => {
 
   return (
     <div className="min-h-screen bg-background text-foreground">
+      <SEOHead title="Cookie Policy - Gravilo" description="Learn about how Gravilo uses cookies on its website." />
       {/* Background gradients */}
       <div className="fixed inset-0 overflow-hidden pointer-events-none">
         <div className="absolute top-1/4 -left-1/4 w-1/2 h-1/2 bg-primary/20 rounded-full blur-3xl" />

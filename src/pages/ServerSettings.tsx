@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
+import SEOHead from "@/components/seo/SEOHead";
 import { supabase } from "@/integrations/supabase/client";
 import { ArrowLeft, Save, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
@@ -173,6 +174,7 @@ const ServerSettings = () => {
 
   return (
     <div className="min-h-screen bg-[#050814] text-white">
+      <SEOHead title="Server Settings - Gravilo" noIndex />
       <div className="relative min-h-screen overflow-hidden">
         {/* Background effects */}
         <div className="pointer-events-none absolute inset-0 opacity-40 bg-[radial-gradient(circle_at_top,_rgba(88,101,242,0.3),_transparent_55%),radial-gradient(circle_at_bottom,_rgba(59,255,182,0.2),_transparent_60%)]" />
