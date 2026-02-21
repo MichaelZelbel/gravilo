@@ -49,6 +49,12 @@ const Privacy = () => {
                     Collecting and Using Your Personal Data
                   </button>
                   <button
+                    onClick={() => scrollToSection("processors")}
+                    className="block text-muted-foreground hover:text-foreground transition-colors text-left"
+                  >
+                    Third-Party Data Processors
+                  </button>
+                  <button
                     onClick={() => scrollToSection("children")}
                     className="block text-muted-foreground hover:text-foreground transition-colors text-left"
                   >
@@ -286,6 +292,45 @@ const Privacy = () => {
                   <h3 className="text-xl font-medium text-foreground mt-6 mb-3">Security of Your Personal Data</h3>
                   <p>
                     The security of Your Personal Data is important to Us, but remember that no method of transmission over the Internet, or method of electronic storage is 100% secure. While We strive to use commercially acceptable means to protect Your Personal Data, We cannot guarantee its absolute security.
+                  </p>
+                </section>
+
+                <section id="processors">
+                  <h2 className="text-2xl font-semibold text-foreground mt-10 mb-4">Third-Party Data Processors</h2>
+                  <p>
+                    In order to operate and deliver the Service, We engage certain third-party service providers who process Personal Data on Our behalf. Each of these providers acts as a <strong className="text-foreground">data processor</strong> within the meaning of Article 28 of the General Data Protection Regulation (GDPR). We have entered into Data Processing Agreements (DPAs) or equivalent contractual safeguards with each processor to ensure that Your Personal Data is handled in accordance with applicable data protection legislation.
+                  </p>
+                  <p className="mt-4">The following is a list of Our current data processors, along with a description of the services they provide and a link to their respective Data Processing Agreement or privacy documentation:</p>
+
+                  <ul className="list-disc pl-6 space-y-4 mt-4">
+                    <li>
+                      <strong className="text-foreground">Microsoft Azure</strong> (including Azure OpenAI Service) — Cloud infrastructure, hosting, and AI inference services. Microsoft acts as a data processor for data processed through its Azure platform.{" "}
+                      <a href="https://www.microsoft.com/licensing/docs/view/Microsoft-Products-and-Services-Data-Protection-Addendum-DPA" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">Microsoft Data Protection Addendum (DPA)</a>.
+                    </li>
+                    <li>
+                      <strong className="text-foreground">Supabase</strong> — Database hosting, authentication, and backend-as-a-service infrastructure. Supabase processes Personal Data in connection with user authentication and data storage on Our behalf.{" "}
+                      <a href="https://supabase.com/downloads/docs/Supabase%2BDPA%2B250314.pdf" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">Supabase Data Processing Addendum (DPA)</a>.
+                    </li>
+                    <li>
+                      <strong className="text-foreground">Lovable</strong> — Website application hosting and deployment platform. Lovable processes data in connection with serving and hosting the Service.{" "}
+                      <a href="https://lovable.dev/data-processing-agreement" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">Lovable Data Processing Agreement (DPA)</a>.
+                    </li>
+                    <li>
+                      <strong className="text-foreground">Hostinger</strong> — Domain and web hosting provider. Hostinger processes data in connection with domain management and web hosting services.{" "}
+                      <a href="https://www.hostinger.com/legal/dpa" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">Hostinger Data Processing Agreement (DPA)</a>.
+                    </li>
+                    <li>
+                      <strong className="text-foreground">Resend</strong> — Transactional email delivery service. Resend processes Personal Data (such as email addresses and message content) in order to deliver transactional and service-related emails on Our behalf.{" "}
+                      <a href="https://resend.com/legal/dpa" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">Resend Data Processing Agreement (DPA)</a>.
+                    </li>
+                    <li>
+                      <strong className="text-foreground">OpenAI</strong> — AI inference provider used as a fallback for certain AI-powered features of the Service. OpenAI processes data submitted through API requests in order to generate AI responses.{" "}
+                      <a href="https://openai.com/policies/data-processing-addendum/" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">OpenAI Data Processing Addendum (DPA)</a>.
+                    </li>
+                  </ul>
+
+                  <p className="mt-4">
+                    We regularly review Our data processing arrangements to ensure that all processors maintain appropriate technical and organisational measures to protect Your Personal Data. If We engage any new data processors, this section will be updated accordingly.
                   </p>
                 </section>
 
